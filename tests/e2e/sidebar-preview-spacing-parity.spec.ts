@@ -20,36 +20,64 @@ type ParagraphMetric = {
   lineHeight: number;
 };
 
-async function getParagraphMetrics(
+function getParagraphMetrics(
   locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
 ): Promise<ParagraphMetric[]> {
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Fallback line-box extraction intentionally handles paragraph and linebreak-based Lexical projections.
   return locator.evaluate((node) => {
     const richTextHost = node as HTMLElement;
     const hostRect = richTextHost.getBoundingClientRect();
     if (hostRect.height === 0 || hostRect.width === 0) return [] as ParagraphMetric[];
 
+    const paragraphMetrics = Array.from(richTextHost.querySelectorAll("p"))
+      .map((paragraph) => {
+        const rect = paragraph.getBoundingClientRect();
+        return {
+          text: paragraph.textContent?.trim() ?? "",
+          y: (rect.top - hostRect.top) / hostRect.height,
+          lineHeight: rect.height / hostRect.height,
+        };
+      })
+      .filter((metric) => metric.text.length > 0 && metric.lineHeight > 0);
+
+    if (paragraphMetrics.length >= 3) {
+      return paragraphMetrics;
+    }
+
+    const textNodes: Text[] = [];
     const walker = document.createTreeWalker(richTextHost, NodeFilter.SHOW_TEXT);
-    const lines: ParagraphMetric[] = [];
-    const range = document.createRange();
-    let current = walker.nextNode();
-    while (current) {
-      const textNode = current as Text;
-      const value = textNode.textContent ?? "";
-      if (value.trim().length > 0) {
-        range.selectNodeContents(textNode);
-        const rects = Array.from(range.getClientRects());
-        for (const rect of rects) {
-          if (rect.width <= 0 || rect.height <= 0) continue;
-          lines.push({
-            text: value.trim(),
-            y: (rect.top - hostRect.top) / hostRect.height,
-            lineHeight: rect.height / hostRect.height,
-          });
+    while (walker.nextNode()) {
+      const candidate = walker.currentNode as Text;
+      if ((candidate.textContent ?? "").trim().length > 0) {
+        textNodes.push(candidate);
+      }
+    }
+
+    const lineBands: Array<{ yPx: number; hPx: number; text: string }> = [];
+    for (const textNode of textNodes) {
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+      for (const rect of rects) {
+        const yPx = rect.top - hostRect.top;
+        const existing = lineBands.find((band) => Math.abs(band.yPx - yPx) <= 1.5);
+        if (existing) {
+          existing.hPx = Math.max(existing.hPx, rect.height);
+          existing.text = `${existing.text}${textNode.textContent ?? ""}`;
+        } else {
+          lineBands.push({ yPx, hPx: rect.height, text: textNode.textContent ?? "" });
         }
       }
-      current = walker.nextNode();
     }
-    return lines;
+
+    return lineBands
+      .sort((a, b) => a.yPx - b.yPx)
+      .map((band) => ({
+        text: band.text.trim(),
+        y: band.yPx / hostRect.height,
+        lineHeight: band.hPx / hostRect.height,
+      }))
+      .filter((metric) => metric.text.length > 0 && metric.lineHeight > 0);
   });
 }
 

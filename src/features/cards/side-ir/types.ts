@@ -142,6 +142,15 @@ function normalizeLayout(layout: unknown): SideIR["layout"] {
   };
 
   const legacyRatio = raw.quick?.template === "split" ? 1.45 : DEFAULT_QUICK_LAYOUT.cardRatio;
+  const legacyBackground =
+    typeof raw.creativeLayout?.background === "string"
+      ? raw.creativeLayout.background
+      : undefined;
+  const background =
+    legacyBackground ??
+    (typeof raw.creative?.background === "string"
+      ? raw.creative.background
+      : DEFAULT_CREATIVE_LAYOUT.background);
 
   const quickLayout: QuickLayout = {
     mode: "centered",
@@ -152,12 +161,7 @@ function normalizeLayout(layout: unknown): SideIR["layout"] {
   const creativeLayout: CreativeLayout = {
     width: asPositiveNumber(raw.creativeLayout?.width ?? raw.creative?.width, DEFAULT_CREATIVE_LAYOUT.width),
     height: asPositiveNumber(raw.creativeLayout?.height ?? raw.creative?.height, DEFAULT_CREATIVE_LAYOUT.height),
-    background:
-      typeof raw.creativeLayout?.background === "string"
-        ? raw.creativeLayout.background
-        : typeof raw.creative?.background === "string"
-          ? raw.creative.background
-          : DEFAULT_CREATIVE_LAYOUT.background,
+    background,
     fixedViewport: true,
     padding: asPositiveNumber(raw.creativeLayout?.padding, DEFAULT_CREATIVE_LAYOUT.padding),
   };

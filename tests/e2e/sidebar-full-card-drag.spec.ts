@@ -41,15 +41,21 @@ test.describe("Sidebar full-card drag", () => {
     await page.mouse.down();
     await page.mouse.move(
       secondBox.x + secondBox.width / 2,
-      secondBox.y + secondBox.height / 2,
-      { steps: 15 },
+      secondBox.y + secondBox.height + 24,
+      { steps: 24 },
     );
     await page.mouse.up();
 
-    await expect(page.getByText(/was dropped over droppable area/i)).toBeVisible();
-    const afterOrder = await cardPreviews.evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute("data-testid") ?? ""),
-    );
-    expect(afterOrder).not.toEqual(beforeOrder);
+    await expect
+      .poll(
+        async () =>
+          JSON.stringify(
+            await cardPreviews.evaluateAll((nodes) =>
+              nodes.map((node) => node.getAttribute("data-testid") ?? ""),
+            ),
+          ),
+        { timeout: 10000 },
+      )
+      .not.toBe(JSON.stringify(beforeOrder));
   });
 });

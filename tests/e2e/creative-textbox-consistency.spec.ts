@@ -27,7 +27,18 @@ test.describe("Creative textbox consistency", () => {
     await page.getByTestId("creative-add-text-button").click();
 
     const activeAfterAdd = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              data?: {
+                kind?: string;
+                elementId?: string;
+              };
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       return {
         id: String(active?.data?.elementId ?? ""),
@@ -41,7 +52,21 @@ test.describe("Creative textbox consistency", () => {
     await expect(richTextStatic).toBeVisible();
 
     const beforeMove = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              getBoundingRect?: (absolute?: boolean, calculate?: boolean) => {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+              setCoords?: () => void;
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       if (!active?.getBoundingRect) return null;
       active.setCoords?.();
@@ -60,8 +85,12 @@ test.describe("Creative textbox consistency", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    const startX = canvasBox.x + beforeMove.left + beforeMove.width / 2;
-    const startY = canvasBox.y + beforeMove.top + beforeMove.height / 2;
+    await page.getByTestId("creative-tool-select").click();
+    await page.keyboard.press("Escape");
+
+    // Drag from the visible selection border instead of text content.
+    const startX = canvasBox.x + beforeMove.left + 8;
+    const startY = canvasBox.y + beforeMove.top + 8;
     await page.mouse.move(startX, startY);
     await page.mouse.down();
     await page.mouse.move(startX + 120, startY + 80, { steps: 16 });
@@ -70,7 +99,21 @@ test.describe("Creative textbox consistency", () => {
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
     const afterMove = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              getBoundingRect?: (absolute?: boolean, calculate?: boolean) => {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+              setCoords?: () => void;
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       if (!active?.getBoundingRect) return null;
       active.setCoords?.();

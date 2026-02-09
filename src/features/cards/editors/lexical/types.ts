@@ -1,0 +1,7 @@
+export type FormatState = {
+  isBold: boolean;
+  isItalic: boolean;
+  isUnderline: boolean;
+  isStrikethrough: boolean;
+  fontSize: string;
+};

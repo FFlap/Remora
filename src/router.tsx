@@ -6,12 +6,12 @@ import { QueryClient } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
-  const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!;
-  if (!CONVEX_URL) {
+  const convexUrl = import.meta.env.VITE_CONVEX_URL;
+  if (!convexUrl) {
     throw new Error("Missing VITE_CONVEX_URL environment variable");
   }
 
-  const convex = new ConvexReactClient(CONVEX_URL, {
+  const convex = new ConvexReactClient(convexUrl, {
     unsavedChangesWarning: false,
   });
   const convexQueryClient = new ConvexQueryClient(convex);

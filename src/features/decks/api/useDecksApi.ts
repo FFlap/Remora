@@ -13,9 +13,9 @@ export function usePublicDecks() {
   return useQuery(api.decks.listPublic, {});
 }
 
-export function useDeckForEdit(deckId: string | Id<"decks"> | undefined) {
+export function useDeckEditShell(deckId: string | Id<"decks"> | undefined) {
   const typedDeckId = asDeckId(deckId);
-  return useQuery(api.decks.getForEdit, typedDeckId ? { deckId: typedDeckId } : "skip");
+  return useQuery(api.decks.getEditShell, typedDeckId ? { deckId: typedDeckId } : "skip");
 }
 
 export function useDeckForViewer(deckId: string | Id<"decks"> | undefined) {

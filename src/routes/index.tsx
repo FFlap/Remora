@@ -24,6 +24,22 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+const HEATMAP_CELLS = Array.from({ length: 36 }, (_, index) => {
+  let toneClass = "bg-blue-100";
+  if (index % 6 === 0) {
+    toneClass = "bg-blue-600";
+  } else if (index % 4 === 0) {
+    toneClass = "bg-blue-400";
+  } else if (index % 3 === 0) {
+    toneClass = "bg-blue-300";
+  }
+
+  return {
+    id: `heat-${index + 1}`,
+    toneClass,
+  };
+});
+
 function Home() {
   const currentYear = new Date().getFullYear();
   return (
@@ -51,12 +67,18 @@ function Home() {
           <div className="flex items-center gap-4">
             <SignedOut>
               <SignInButton mode="modal">
-                <button className="rounded-lg px-4 py-2 text-[13px] font-medium transition-colors hover:bg-gray-50">
+                <button
+                  type="button"
+                  className="rounded-lg px-4 py-2 text-[13px] font-medium transition-colors hover:bg-gray-50"
+                >
                   Sign in
                 </button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="rounded-xl bg-black px-6 py-2.5 text-[13px] font-medium text-white transition-all hover:bg-gray-800">
+                <button
+                  type="button"
+                  className="rounded-xl bg-black px-6 py-2.5 text-[13px] font-medium text-white transition-all hover:bg-gray-800"
+                >
                   Sign up
                 </button>
               </SignUpButton>
@@ -214,19 +236,8 @@ function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-12 gap-1.5">
-                    {Array.from({ length: 36 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className={`h-3 w-3 rounded-[2px] ${
-                          index % 6 === 0
-                            ? "bg-blue-600"
-                            : index % 4 === 0
-                              ? "bg-blue-400"
-                              : index % 3 === 0
-                                ? "bg-blue-300"
-                                : "bg-blue-100"
-                        }`}
-                      />
+                    {HEATMAP_CELLS.map((cell) => (
+                      <div key={cell.id} className={`h-3 w-3 rounded-[2px] ${cell.toneClass}`} />
                     ))}
                   </div>
                 </div>
@@ -300,7 +311,10 @@ function Home() {
             </p>
             <SignedOut>
               <SignUpButton mode="modal">
-                <button className="rounded-2xl bg-black px-12 py-5 text-[15px] font-bold tracking-wide text-white shadow-xl shadow-black/5 transition-all hover:bg-gray-800">
+                <button
+                  type="button"
+                  className="rounded-2xl bg-black px-12 py-5 text-[15px] font-bold tracking-wide text-white shadow-xl shadow-black/5 transition-all hover:bg-gray-800"
+                >
                   Experience the Platform
                 </button>
               </SignUpButton>

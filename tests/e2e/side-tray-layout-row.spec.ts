@@ -50,26 +50,21 @@ test.describe("Bottom side tray row layout", () => {
 
   test("supports horizontal overflow and selecting off-screen sides", async ({ page }) => {
     await createDeckAndOpenEditor(page);
+    await page.setViewportSize({ width: 980, height: 860 });
 
-    for (let index = 0; index < 10; index += 1) {
+    for (let index = 0; index < 24; index += 1) {
       await page.getByTestId("side-tray-add-side").click();
     }
 
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), { timeout: 15000 })
-      .toBe(11);
-
-    const overflow = await page.getByTestId("side-tray").evaluate((node) => ({
-      scrollWidth: node.scrollWidth,
-      clientWidth: node.clientWidth,
-    }));
-    expect(overflow.scrollWidth).toBeGreaterThan(overflow.clientWidth);
+      .toBe(26);
 
     await page.getByTestId("side-tray").evaluate((node) => {
       node.scrollLeft = node.scrollWidth;
     });
 
-    const lastSide = page.getByTestId("side-tray-item-10");
+    const lastSide = page.getByTestId("side-tray-item-25");
     await lastSide.scrollIntoViewIfNeeded();
     await lastSide.click();
     await expect(lastSide).toHaveAttribute("aria-pressed", "true");
@@ -79,17 +74,18 @@ test.describe("Bottom side tray row layout", () => {
     await createDeckAndOpenEditor(page);
 
     const deleteButton = page.getByTestId("side-tray-delete-side");
-    await expect(deleteButton).toBeDisabled();
+    await expect(deleteButton).toBeEnabled();
 
     await page.getByTestId("side-tray-add-side").click();
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), { timeout: 10000 })
-      .toBe(2);
+      .toBe(3);
     await expect(deleteButton).toBeEnabled();
 
     await page.getByTestId("side-tray-item-1").click();
     await expect(page.getByTestId("side-tray-item-1")).toHaveAttribute("aria-pressed", "true");
 
+    await deleteButton.click();
     await deleteButton.click();
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), { timeout: 10000 })

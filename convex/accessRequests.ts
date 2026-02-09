@@ -2,15 +2,19 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, getDeckOrThrow } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
+import { parseAccessRequestMessage } from "../shared/contracts/deckValidation";
+import { deckAccessRequestDocValidator } from "./lib/constants";
 
 export const requestAccess = mutation({
   args: {
     deckId: v.id("decks"),
     message: v.optional(v.string()),
   },
+  returns: v.id("deckAccessRequests"),
   handler: async (ctx, args) => {
     const user = await ensureCurrentUser(ctx);
     const deck = await getDeckOrThrow(ctx, args.deckId);
+    const message = parseAccessRequestMessage(args.message);
 
     if (deck.visibility !== "whitelist") {
       throw new Error("This deck does not accept access requests");
@@ -40,7 +44,7 @@ export const requestAccess = mutation({
 
       await ctx.db.patch(existing._id, {
         status: "pending",
-        message: args.message?.trim(),
+        message,
         updatedAt: now,
         resolvedByUserId: undefined,
       });
@@ -51,7 +55,7 @@ export const requestAccess = mutation({
       deckId: deck._id,
       requesterUserId: user._id,
       requesterEmail: normalizeEmail(user.email),
-      message: args.message?.trim(),
+      message,
       status: "pending",
       createdAt: now,
       updatedAt: now,
@@ -63,6 +67,7 @@ export const myRequestStatus = query({
   args: {
     deckId: v.id("decks"),
   },
+  returns: v.union(deckAccessRequestDocValidator, v.null()),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -82,6 +87,7 @@ export const listForDeckOwner = query({
   args: {
     deckId: v.id("decks"),
   },
+  returns: v.array(deckAccessRequestDocValidator),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
 
@@ -98,6 +104,7 @@ export const resolveRequest = mutation({
     requestId: v.id("deckAccessRequests"),
     decision: v.union(v.literal("approved"), v.literal("rejected")),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const resolver = await ensureCurrentUser(ctx);
     const request = await ctx.db.get(args.requestId);
@@ -123,5 +130,6 @@ export const resolveRequest = mutation({
         updatedAt: now,
       });
     }
+    return null;
   },
 });

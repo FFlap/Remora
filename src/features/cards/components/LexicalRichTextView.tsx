@@ -51,60 +51,59 @@ function asScale(scale: number) {
   return scale;
 }
 
+function applyScaledPx(value: string, scale: number) {
+  const px = Number.parseFloat(value);
+  if (!Number.isFinite(px)) return undefined;
+  return `${Math.max(1, px * asScale(scale))}px`;
+}
+
+function applyStyleEntry(result: CSSProperties, key: string, value: string, scale: number) {
+  switch (key) {
+    case "color":
+      result.color = value;
+      return;
+    case "background-color":
+      result.backgroundColor = value;
+      return;
+    case "font-size":
+      {
+        const scaled = applyScaledPx(value, scale);
+        if (scaled) {
+          result.fontSize = scaled;
+        }
+      }
+      return;
+    case "font-family":
+      result.fontFamily = value;
+      return;
+    case "font-weight":
+      result.fontWeight = value;
+      return;
+    case "font-style":
+      result.fontStyle = value;
+      return;
+    case "text-decoration":
+      result.textDecoration = value;
+      return;
+    default:
+      return;
+  }
+}
+
 function parseStyleString(style: string | undefined, scale: number): CSSProperties {
   if (!style) return {};
   const result: CSSProperties = {};
-  const safeScale = asScale(scale);
-
   const entries = style
     .split(";")
     .map((chunk) => chunk.trim())
-    .filter(Boolean)
-    .map((chunk) => {
-      const [rawKey, ...rawValue] = chunk.split(":");
-      return [rawKey?.trim().toLowerCase(), rawValue.join(":").trim()] as const;
-    });
+    .filter(Boolean);
 
-  for (const [key, value] of entries) {
+  for (const entry of entries) {
+    const [rawKey, ...rawValue] = entry.split(":");
+    const key = rawKey?.trim().toLowerCase();
+    const value = rawValue.join(":").trim();
     if (!key || !value) continue;
-
-    if (key === "color") {
-      result.color = value;
-      continue;
-    }
-
-    if (key === "background-color") {
-      result.backgroundColor = value;
-      continue;
-    }
-
-    if (key === "font-size") {
-      const px = Number.parseFloat(value);
-      if (Number.isFinite(px)) {
-        result.fontSize = `${Math.max(1, px * safeScale)}px`;
-      }
-      continue;
-    }
-
-    if (key === "font-family") {
-      result.fontFamily = value;
-      continue;
-    }
-
-    if (key === "font-weight") {
-      result.fontWeight = value;
-      continue;
-    }
-
-    if (key === "font-style") {
-      result.fontStyle = value;
-      continue;
-    }
-
-    if (key === "text-decoration") {
-      result.textDecoration = value;
-      continue;
-    }
+    applyStyleEntry(result, key, value, scale);
   }
 
   return result;
@@ -149,81 +148,119 @@ function paragraphAlign(format: unknown): CSSProperties["textAlign"] | undefined
   return undefined;
 }
 
+function baseFontSizePx(scale: number) {
+  return `${Math.max(1, 16 * asScale(scale))}px`;
+}
+
+function headingSize(tag: "h1" | "h2" | "h3", scale: number) {
+  if (tag === "h1") return Math.max(1, 28 * asScale(scale));
+  if (tag === "h2") return Math.max(1, 24 * asScale(scale));
+  return Math.max(1, 20 * asScale(scale));
+}
+
+function renderChildren(node: LexicalNode, key: string, scale: number) {
+  if (!Array.isArray(node.children)) return null;
+  return node.children.map((child, index) => renderNode(child, `${key}-${index}`, scale));
+}
+
+function renderTextNode(node: LexicalNode, key: string, scale: number) {
+  const inlineStyle = {
+    ...formatToStyle(node.format),
+    ...parseStyleString(node.style, scale),
+  };
+  if (inlineStyle.fontSize == null) {
+    inlineStyle.fontSize = baseFontSizePx(scale);
+  }
+  return (
+    <span key={key} style={inlineStyle}>
+      {node.text ?? ""}
+    </span>
+  );
+}
+
+function renderParagraphNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+  return (
+    <p
+      key={key}
+      className="mb-[var(--lexical-block-spacing)] last:mb-0 leading-[1.35]"
+      style={{ textAlign: paragraphAlign(node.format), fontSize: baseFontSizePx(scale) }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function renderHeadingNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+  const tag = node.tag === "h1" || node.tag === "h2" || node.tag === "h3" ? node.tag : "h2";
+  return (
+    <p
+      key={key}
+      className="mb-[var(--lexical-block-spacing)] last:mb-0 font-semibold leading-tight"
+      style={{ fontSize: `${headingSize(tag, scale)}px` }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function renderListNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+  if (node.listType === "number") {
+    return (
+      <ol
+        key={key}
+        className="mb-[var(--lexical-block-spacing)] list-decimal pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
+        style={{ fontSize: baseFontSizePx(scale) }}
+      >
+        {children}
+      </ol>
+    );
+  }
+
+  return (
+    <ul
+      key={key}
+      className="mb-[var(--lexical-block-spacing)] list-disc pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
+      style={{ fontSize: baseFontSizePx(scale) }}
+    >
+      {children}
+    </ul>
+  );
+}
+
+function renderLinkNode(node: LexicalNode, key: string, children: ReactNode) {
+  const safeHref = sanitizeLinkUrl(node.url);
+  if (!safeHref) {
+    return <span key={key}>{children}</span>;
+  }
+
+  const isHttpLink = /^https?:\/\//i.test(safeHref);
+  return (
+    <a
+      key={key}
+      href={safeHref}
+      className="text-blue-600 underline"
+      target={isHttpLink ? "_blank" : undefined}
+      rel={isHttpLink ? "noopener noreferrer nofollow ugc" : undefined}
+    >
+      {children}
+    </a>
+  );
+}
+
 function renderNode(node: LexicalNode, key: string, scale: number): ReactNode {
-  const baseFontSizePx = `${Math.max(1, 16 * asScale(scale))}px`;
-  const children = Array.isArray(node.children)
-    ? node.children.map((child, index) => renderNode(child, `${key}-${index}`, scale))
-    : null;
+  const children = renderChildren(node, key, scale);
 
   switch (node.type) {
     case "linebreak":
       return <br key={key} />;
-
-    case "text": {
-      const inlineStyle = {
-        ...formatToStyle(node.format),
-        ...parseStyleString(node.style, scale),
-      };
-
-      if (inlineStyle.fontSize == null) {
-        inlineStyle.fontSize = `${Math.max(1, 16 * asScale(scale))}px`;
-      }
-
-      return (
-        <span key={key} style={inlineStyle}>
-          {node.text ?? ""}
-        </span>
-      );
-    }
-
+    case "text":
+      return renderTextNode(node, key, scale);
     case "paragraph":
-      return (
-        <p
-          key={key}
-          className="mb-[var(--lexical-block-spacing)] last:mb-0 leading-[1.35]"
-          style={{ textAlign: paragraphAlign(node.format), fontSize: baseFontSizePx }}
-        >
-          {children}
-        </p>
-      );
-
-    case "heading": {
-      const tag = node.tag === "h1" || node.tag === "h2" || node.tag === "h3" ? node.tag : "h2";
-      const size =
-        tag === "h1" ? Math.max(1, 28 * asScale(scale)) : tag === "h2" ? Math.max(1, 24 * asScale(scale)) : Math.max(1, 20 * asScale(scale));
-      return (
-        <p
-          key={key}
-          className="mb-[var(--lexical-block-spacing)] last:mb-0 font-semibold leading-tight"
-          style={{ fontSize: `${size}px` }}
-        >
-          {children}
-        </p>
-      );
-    }
-
+      return renderParagraphNode(node, key, scale, children);
+    case "heading":
+      return renderHeadingNode(node, key, scale, children);
     case "list":
-      if (node.listType === "number") {
-        return (
-          <ol
-            key={key}
-            className="mb-[var(--lexical-block-spacing)] list-decimal pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
-            style={{ fontSize: baseFontSizePx }}
-          >
-            {children}
-          </ol>
-        );
-      }
-      return (
-        <ul
-          key={key}
-          className="mb-[var(--lexical-block-spacing)] list-disc pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
-          style={{ fontSize: baseFontSizePx }}
-        >
-          {children}
-        </ul>
-      );
-
+      return renderListNode(node, key, scale, children);
     case "listitem":
       return (
         <li key={key} className="mb-[var(--lexical-list-item-spacing)] last:mb-0">
@@ -236,32 +273,14 @@ function renderNode(node: LexicalNode, key: string, scale: number): ReactNode {
         <blockquote
           key={key}
           className="mb-[var(--lexical-block-spacing)] border-l-2 border-zinc-300 pl-[var(--lexical-quote-indent)] italic text-zinc-600 last:mb-0"
-          style={{ fontSize: baseFontSizePx }}
+          style={{ fontSize: baseFontSizePx(scale) }}
         >
           {children}
         </blockquote>
       );
 
     case "link":
-      {
-        const safeHref = sanitizeLinkUrl(node.url);
-        if (!safeHref) {
-          return <span key={key}>{children}</span>;
-        }
-
-        const isHttpLink = /^https?:\/\//i.test(safeHref);
-        return (
-          <a
-            key={key}
-            href={safeHref}
-            className="text-blue-600 underline"
-            target={isHttpLink ? "_blank" : undefined}
-            rel={isHttpLink ? "noopener noreferrer nofollow ugc" : undefined}
-          >
-            {children}
-          </a>
-        );
-      }
+      return renderLinkNode(node, key, children);
 
     default:
       if (children && children.length > 0) {

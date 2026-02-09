@@ -29,7 +29,7 @@ test.describe("Creative Stroke Exact Roundtrip", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
 
     await page.mouse.move(canvasBox.x + 44, canvasBox.y + 112);
     await page.mouse.down();

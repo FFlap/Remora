@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
 import { PlayCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { SideIR, StrokePath } from "@/features/cards/side-ir/types";
 import { cn } from "@/lib/utils";
 import { LexicalRichTextView } from "./LexicalRichTextView";
-import type { SideIR, SideElement, StrokePath } from "@/features/cards/side-ir/types";
 
 function strokePath(points: Array<[number, number]>) {
   if (points.length === 0) return "";
@@ -10,15 +10,16 @@ function strokePath(points: Array<[number, number]>) {
   return `M ${first[0]} ${first[1]} ${rest.map((p) => `L ${p[0]} ${p[1]}`).join(" ")}`;
 }
 
-function getPreviewStrokePoints(element: StrokePath) {
-  const strokePadding = Math.max(0, element.style.width) / 2;
+function getPreviewStrokeFrame(element: StrokePath) {
   const baseWidthFromLayout = Math.max(1, element.baseWidth ?? element.creative.width);
   const baseHeightFromLayout = Math.max(1, element.baseHeight ?? element.creative.height);
   if (element.points.length === 0) {
     return {
       points: [],
-      width: baseWidthFromLayout + strokePadding * 2,
-      height: baseHeightFromLayout + strokePadding * 2,
+      width: baseWidthFromLayout,
+      height: baseHeightFromLayout,
+      offsetX: 0,
+      offsetY: 0,
     };
   }
 
@@ -30,20 +31,25 @@ function getPreviewStrokePoints(element: StrokePath) {
   const maxY = Math.max(...ys);
   const sourceWidth = Math.max(1, maxX - minX, baseWidthFromLayout);
   const sourceHeight = Math.max(1, maxY - minY, baseHeightFromLayout);
+  const offsetX = -minX;
+  const offsetY = -minY;
 
   return {
-    points: element.points.map(
-      ([x, y]) => [x - minX + strokePadding, y - minY + strokePadding] as [number, number],
-    ),
-    width: sourceWidth + strokePadding * 2,
-    height: sourceHeight + strokePadding * 2,
+    points: element.points.map(([x, y]) => [x + offsetX, y + offsetY] as [number, number]),
+    width: sourceWidth,
+    height: sourceHeight,
+    offsetX,
+    offsetY,
   };
 }
 
 function renderStroke(element: StrokePath) {
-  const normalized = getPreviewStrokePoints(element);
+  const normalized = getPreviewStrokeFrame(element);
   const strokeWidth = Math.max(1, element.style.width);
   const strokeD = element.svgPath?.trim() ? element.svgPath : strokePath(normalized.points);
+  const pathTransform = element.svgPath?.trim()
+    ? `translate(${normalized.offsetX} ${normalized.offsetY})`
+    : undefined;
 
   return (
     <svg
@@ -53,8 +59,10 @@ function renderStroke(element: StrokePath) {
       overflow="visible"
       aria-label="Drawing stroke"
     >
+      <title>Drawing stroke</title>
       <path
         d={strokeD}
+        transform={pathTransform}
         stroke={element.style.color}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
@@ -69,6 +77,7 @@ function sortedElements(side: SideIR) {
   return [...side.elements].sort((a, b) => (a.quick.order ?? 0) - (b.quick.order ?? 0));
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component composes card scaling and heterogeneous element rendering for preview parity.
 export function SideCardPreview({
   side,
   className,
@@ -96,7 +105,12 @@ export function SideCardPreview({
     const updateScale = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 1 || rect.height <= 1) {
+      if (
+        !Number.isFinite(rect.width) ||
+        !Number.isFinite(rect.height) ||
+        rect.width <= 1 ||
+        rect.height <= 1
+      ) {
         return;
       }
 
@@ -155,7 +169,9 @@ export function SideCardPreview({
             key={element.id}
             className={cn(
               "absolute",
-              element.type === "stroke" ? "pointer-events-none overflow-visible" : "overflow-hidden",
+              element.type === "stroke"
+                ? "pointer-events-none overflow-visible"
+                : "overflow-hidden",
             )}
             style={{
               left: element.creative.x,

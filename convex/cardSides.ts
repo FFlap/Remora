@@ -1,11 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { editModeValidator, sideIRValidator } from "./lib/constants";
+import { cardSideDocValidator, editModeValidator, sideIRValidator } from "./lib/constants";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { createDefaultSideIR } from "./lib/sideIR";
 
 export const listByCard = query({
   args: { cardId: v.id("cards") },
+  returns: v.array(cardSideDocValidator),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -24,9 +25,11 @@ export const saveSide = mutation({
   args: {
     cardId: v.id("cards"),
     index: v.number(),
+    sideId: v.optional(v.id("cardSides")),
     sideIR: sideIRValidator,
     lastEditedMode: editModeValidator,
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -35,10 +38,20 @@ export const saveSide = mutation({
 
     await assertCanEditDeck(ctx, card.deckId);
 
-    const existing = await ctx.db
-      .query("cardSides")
-      .withIndex("by_card_index", (q) => q.eq("cardId", args.cardId).eq("index", args.index))
-      .first();
+    let existing = null;
+    if (args.sideId) {
+      const byId = await ctx.db.get(args.sideId);
+      if (byId && byId.cardId === args.cardId) {
+        existing = byId;
+      }
+    }
+
+    if (!existing) {
+      existing = await ctx.db
+        .query("cardSides")
+        .withIndex("by_card_index", (q) => q.eq("cardId", args.cardId).eq("index", args.index))
+        .first();
+    }
 
     const now = Date.now();
 
@@ -48,21 +61,17 @@ export const saveSide = mutation({
         updatedAt: now,
       });
     } else {
-      await ctx.db.insert("cardSides", {
-        cardId: args.cardId,
-        index: args.index,
-        sideIR: args.sideIR,
-        createdAt: now,
+      // Ignore stale saves for deleted/reindexed sides.
+      return null;
+    }
+
+    if (card.lastEditedMode !== args.lastEditedMode) {
+      await ctx.db.patch(card._id, {
+        lastEditedMode: args.lastEditedMode,
         updatedAt: now,
       });
     }
-
-    await ctx.db.patch(card._id, {
-      lastEditedMode: args.lastEditedMode,
-      updatedAt: now,
-    });
-
-    await ctx.db.patch(card.deckId, { updatedAt: now });
+    return null;
   },
 });
 
@@ -71,6 +80,7 @@ export const addSide = mutation({
     cardId: v.id("cards"),
     afterIndex: v.optional(v.number()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -108,7 +118,7 @@ export const addSide = mutation({
     });
 
     await ctx.db.patch(card._id, { updatedAt: now });
-    await ctx.db.patch(card.deckId, { updatedAt: now });
+    return null;
   },
 });
 
@@ -117,6 +127,7 @@ export const deleteSide = mutation({
     cardId: v.id("cards"),
     index: v.number(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -153,6 +164,6 @@ export const deleteSide = mutation({
 
     const now = Date.now();
     await ctx.db.patch(card._id, { updatedAt: now });
-    await ctx.db.patch(card.deckId, { updatedAt: now });
+    return null;
   },
 });

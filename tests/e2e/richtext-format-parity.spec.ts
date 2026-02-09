@@ -53,7 +53,7 @@ test.describe("Rich Text Format Parity", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
     await page.mouse.click(canvasBox.x + 130, canvasBox.y + 120);
     await expect(page.getByTestId("creative-richtext-toolbar-row")).toBeVisible();
     await page.getByRole("button", { name: "Edit Text" }).click();

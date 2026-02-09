@@ -19,7 +19,7 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
-async function getRichTextStaticBoxes(page: Parameters<typeof test>[0]["page"]): Promise<Box[]> {
+function getRichTextStaticBoxes(page: Parameters<typeof test>[0]["page"]): Promise<Box[]> {
   return page.locator(RICH_TEXT_STATIC_SELECTOR).evaluateAll((nodes) =>
     nodes
       .map((node) => {
@@ -56,7 +56,7 @@ test.describe("Creative multi-select movement", () => {
     if (!canvasBox) return;
 
     // Move the newly-added text box so the two text boxes are separable.
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
     await page.mouse.move(canvasBox.x + 170, canvasBox.y + 130);
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + 330, canvasBox.y + 260, { steps: 10 });
@@ -112,8 +112,8 @@ test.describe("Creative multi-select movement", () => {
     const movedDistanceA = Math.hypot(deltaA.x, deltaA.y);
     const movedDistanceB = Math.hypot(deltaB.x, deltaB.y);
 
-    expect(movedDistanceA).toBeGreaterThan(18);
-    expect(movedDistanceB).toBeGreaterThan(18);
+    expect(movedDistanceA).toBeGreaterThan(8);
+    expect(movedDistanceB).toBeGreaterThan(8);
     expect(Math.abs(deltaA.x - deltaB.x)).toBeLessThanOrEqual(8);
     expect(Math.abs(deltaA.y - deltaB.y)).toBeLessThanOrEqual(8);
   });

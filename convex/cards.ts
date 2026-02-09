@@ -2,12 +2,14 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { createDefaultSideIR } from "./lib/sideIR";
+import { cardDocValidator, editorCardPayloadValidator } from "./lib/constants";
 
 export const create = mutation({
   args: {
     deckId: v.id("decks"),
     sectionId: v.id("sections"),
   },
+  returns: v.id("cards"),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
 
@@ -47,14 +49,13 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    await ctx.db.patch(args.deckId, { updatedAt: now });
-
     return cardId;
   },
 });
 
 export const listByDeck = query({
   args: { deckId: v.id("decks") },
+  returns: v.array(cardDocValidator),
   handler: async (ctx, args) => {
     await assertCanReadDeck(ctx, args.deckId);
     return await ctx.db
@@ -64,11 +65,35 @@ export const listByDeck = query({
   },
 });
 
+export const getEditorCard = query({
+  args: { cardId: v.id("cards") },
+  returns: editorCardPayloadValidator,
+  handler: async (ctx, args) => {
+    const card = await ctx.db.get(args.cardId);
+    if (!card) {
+      return null;
+    }
+
+    await assertCanEditDeck(ctx, card.deckId);
+
+    const sides = await ctx.db
+      .query("cardSides")
+      .withIndex("by_card_index", (q) => q.eq("cardId", args.cardId))
+      .collect();
+
+    return {
+      card,
+      sides,
+    };
+  },
+});
+
 export const reorderInSection = mutation({
   args: {
     sectionId: v.id("sections"),
     orderedCardIds: v.array(v.id("cards")),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const section = await ctx.db.get(args.sectionId);
     if (!section) {
@@ -105,8 +130,7 @@ export const reorderInSection = mutation({
         }),
       ),
     );
-
-    await ctx.db.patch(section.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });
 
@@ -115,6 +139,7 @@ export const moveToSection = mutation({
     cardId: v.id("cards"),
     sectionId: v.id("sections"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -143,13 +168,13 @@ export const moveToSection = mutation({
       order: last ? last.order + 1 : 0,
       updatedAt: Date.now(),
     });
-
-    await ctx.db.patch(card.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });
 
 export const remove = mutation({
   args: { cardId: v.id("cards") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const card = await ctx.db.get(args.cardId);
     if (!card) {
@@ -165,6 +190,6 @@ export const remove = mutation({
     await Promise.all(sides.map((side) => ctx.db.delete(side._id)));
 
     await ctx.db.delete(card._id);
-    await ctx.db.patch(card.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });

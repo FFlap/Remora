@@ -30,13 +30,13 @@ async function drawReferenceStroke(page: Parameters<typeof test>[0]["page"]) {
   expect(box).not.toBeNull();
   if (!box) return;
 
-  await page.getByRole("button", { name: "Draw" }).click();
+  await page.getByTestId("creative-tool-draw").click();
   await page.mouse.move(box.x + 72, box.y + 112);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width - 86, box.y + 188, { steps: 16 });
   await page.mouse.up();
 
-  await page.getByRole("button", { name: "Select" }).click();
+  await page.getByTestId("creative-tool-select").click();
   await page.mouse.click(box.x + box.width - 8, box.y + box.height - 8);
 }
 
@@ -136,7 +136,9 @@ test.describe("Preview surface parity", () => {
     const sidebarBuffer = await sidebarContent.screenshot({ type: "png" });
 
     await page.getByTestId("mode-creative-button").click();
-    const creativeBuffer = await creativeCardContent.screenshot({ type: "png" });
+    const creativeCardShell = page.getByTestId("creative-card-shell");
+    await expect(creativeCardShell).toBeVisible({ timeout: 10000 });
+    const creativeBuffer = await creativeCardShell.locator(":scope > div").first().screenshot({ type: "png" });
 
     const quickVsSidebar = comparePngBuffers(quickBuffer, sidebarBuffer, {
       width: 520,

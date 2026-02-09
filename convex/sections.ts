@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
+import { sectionDocValidator } from "./lib/constants";
 
 export const listByDeck = query({
   args: { deckId: v.id("decks") },
+  returns: v.array(sectionDocValidator),
   handler: async (ctx, args) => {
     await assertCanReadDeck(ctx, args.deckId);
     return await ctx.db
@@ -18,6 +20,7 @@ export const create = mutation({
     deckId: v.id("decks"),
     title: v.string(),
   },
+  returns: v.id("sections"),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
 
@@ -33,7 +36,6 @@ export const create = mutation({
       order: last ? last.order + 1 : 0,
     });
 
-    await ctx.db.patch(args.deckId, { updatedAt: Date.now() });
     return sectionId;
   },
 });
@@ -43,6 +45,7 @@ export const rename = mutation({
     sectionId: v.id("sections"),
     title: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const section = await ctx.db.get(args.sectionId);
     if (!section) {
@@ -50,7 +53,7 @@ export const rename = mutation({
     }
     await assertCanEditDeck(ctx, section.deckId);
     await ctx.db.patch(args.sectionId, { title: args.title.trim() || "Untitled" });
-    await ctx.db.patch(section.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });
 
@@ -59,6 +62,7 @@ export const reorder = mutation({
     deckId: v.id("decks"),
     orderedSectionIds: v.array(v.id("sections")),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
 
@@ -89,13 +93,13 @@ export const reorder = mutation({
         }),
       ),
     );
-
-    await ctx.db.patch(args.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });
 
 export const remove = mutation({
   args: { sectionId: v.id("sections") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const section = await ctx.db.get(args.sectionId);
     if (!section) {
@@ -118,6 +122,6 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(section._id);
-    await ctx.db.patch(section.deckId, { updatedAt: Date.now() });
+    return null;
   },
 });

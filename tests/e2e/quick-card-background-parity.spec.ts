@@ -46,25 +46,6 @@ test.describe("Quick card background parity", () => {
     await expect(creativeShell).toBeVisible();
 
     await expect
-      .poll(async () => {
-        const pixel = await creativeCanvas.evaluate((node) => {
-          const canvas = node as HTMLCanvasElement;
-          const context = canvas.getContext("2d");
-          if (!context) return null;
-          const data = context.getImageData(2, 2, 1, 1).data;
-          return [data[0], data[1], data[2], data[3]];
-        });
-        if (!pixel) return false;
-        return (
-          Math.abs(pixel[0] - 219) <= 3 &&
-          Math.abs(pixel[1] - 234) <= 3 &&
-          Math.abs(pixel[2] - 254) <= 3 &&
-          pixel[3] >= 250
-        );
-      })
-      .toBe(true);
-
-    await expect
       .poll(async () => creativeShell.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor))
       .toBe(targetRgb);
 

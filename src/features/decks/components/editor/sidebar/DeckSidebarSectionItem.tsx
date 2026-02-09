@@ -1,0 +1,87 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
+import type { DragEndEvent, useSensors } from "@dnd-kit/core";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
+import { DeckSidebarCardList } from "@/features/decks/components/editor/sidebar/DeckSidebarCardList";
+import type { DeckEditShellSection } from "@/features/decks/types/editor";
+import type { Id } from "@/lib/convexApi";
+
+type DeckSidebarSectionItemProps = {
+  section: DeckEditShellSection;
+  sectionId: string;
+  isCollapsed: boolean;
+  selectedCardId?: string;
+  activeSidePreview: import("@/features/cards/side-ir/types").SideIR;
+  activePreviewCardId?: string;
+  sensors: ReturnType<typeof useSensors>;
+  onToggleCollapsed: (sectionId: string) => void;
+  onSelectCard: (cardId: string) => void;
+  onCardDragEnd: (sectionId: Id<"sections">, cardIds: Id<"cards">[], event: DragEndEvent) => Promise<void>;
+  onSectionContextMenu: (event: ReactMouseEvent<HTMLElement>, sectionId: string) => void;
+  onCardContextMenu: (
+    event: ReactMouseEvent<HTMLElement>,
+    sectionId: string,
+    cardId: string,
+    cardIndex: number,
+  ) => void;
+};
+
+export function DeckSidebarSectionItem({
+  section,
+  sectionId,
+  isCollapsed,
+  selectedCardId,
+  activeSidePreview,
+  activePreviewCardId,
+  sensors,
+  onToggleCollapsed,
+  onSelectCard,
+  onCardDragEnd,
+  onSectionContextMenu,
+  onCardContextMenu,
+}: DeckSidebarSectionItemProps) {
+  const isActiveSection = section.cards.some((card) => String(card._id) === selectedCardId);
+
+  return (
+    <SortableRow id={sectionId}>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <button
+          type="button"
+          className="w-full bg-muted/90 px-2 py-1.5 backdrop-blur-sm border-b border-border text-left"
+          onContextMenu={(event) => onSectionContextMenu(event, sectionId)}
+          onClick={() => onToggleCollapsed(sectionId)}
+        >
+          <span className="flex items-center gap-1">
+            {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            <span className="flex-1 truncate text-xs font-semibold tracking-wide">{section.title}</span>
+            {isActiveSection ? (
+              <span className="rounded bg-black px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">
+                active
+              </span>
+            ) : null}
+          </span>
+          <span className="pl-5 text-[10px] text-muted-foreground">
+            {section.cards.length} card{section.cards.length === 1 ? "" : "s"}
+            {!isCollapsed ? " - drag to reorder" : ""}
+          </span>
+        </button>
+
+        {!isCollapsed ? (
+          <div className="p-2">
+            <DeckSidebarCardList
+              section={section}
+              sectionId={sectionId}
+              selectedCardId={selectedCardId}
+              activeSidePreview={activeSidePreview}
+              activePreviewCardId={activePreviewCardId}
+              sensors={sensors}
+              onCardDragEnd={onCardDragEnd}
+              onSelectCard={onSelectCard}
+              onCardContextMenu={onCardContextMenu}
+            />
+          </div>
+        ) : null}
+      </div>
+    </SortableRow>
+  );
+}

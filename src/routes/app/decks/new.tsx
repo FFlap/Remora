@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateDeck } from "@/features/decks/api/useDecksApi";
+import { getValidationMessage } from "@/lib/validationErrors";
+import { parseDeckMetaInput } from "../../../../shared/contracts/deckValidation";
 
 export const Route = createFileRoute("/app/decks/new")({
   component: NewDeckPage,
@@ -58,9 +60,10 @@ function NewDeckPage() {
             onClick={async () => {
               setSaving(true);
               try {
+                const parsedMeta = parseDeckMetaInput({ title, description });
                 const result = await createDeck({
-                  title,
-                  description,
+                  title: parsedMeta.title,
+                  description: parsedMeta.description,
                 });
                 toast.success("Deck created");
                 void navigate({
@@ -70,8 +73,8 @@ function NewDeckPage() {
                     cardId: String(result.cardId),
                   },
                 });
-              } catch {
-                toast.error("Failed to create deck");
+              } catch (error) {
+                toast.error(getValidationMessage(error, "Failed to create deck"));
               } finally {
                 setSaving(false);
               }

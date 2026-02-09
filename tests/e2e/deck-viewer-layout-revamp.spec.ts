@@ -10,10 +10,22 @@ function parseEditUrl(url: string) {
 }
 
 async function fillPrimaryRichText(page: Parameters<typeof test>[0]["page"], value: string) {
-  const editor = page.locator('[contenteditable="true"]').first();
+  const editor = page.locator('.quick-editor-input-panel [contenteditable="true"]').first();
   await editor.click();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.type(value);
+  await page.keyboard.press(`${process.platform === "darwin" ? "Meta" : "Control"}+A`);
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText(value);
+  await expect
+    .poll(async () => ((await editor.textContent()) ?? "").includes(value), { timeout: 12000 })
+    .toBeTruthy();
+  await expect
+    .poll(
+      async () =>
+        ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").includes(value),
+      { timeout: 12000 },
+    )
+    .toBeTruthy();
+  await page.waitForTimeout(900);
 }
 
 async function createViewerFixture(page: Parameters<typeof test>[0]["page"]) {
@@ -23,7 +35,9 @@ async function createViewerFixture(page: Parameters<typeof test>[0]["page"]) {
 
   const title = `Viewer Revamp Deck ${Date.now()}`;
   await page.getByPlaceholder("Biology Midterm").fill(title);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Viewer layout revamp regression.");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Viewer layout revamp regression.");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 
@@ -39,7 +53,7 @@ async function createViewerFixture(page: Parameters<typeof test>[0]["page"]) {
   await fillPrimaryRichText(page, sideTwoToken);
 
   const previousUrl = page.url();
-  await page.getByRole("button", { name: "Section" }).click();
+  await page.getByRole("button", { name: "Section" }).first().click();
   await expect.poll(() => page.url(), { timeout: 15000 }).not.toBe(previousUrl);
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
   const second = parseEditUrl(page.url());
@@ -47,6 +61,11 @@ async function createViewerFixture(page: Parameters<typeof test>[0]["page"]) {
   await page.getByTestId("mode-quick-button").click();
   await fillPrimaryRichText(page, secondCardFrontToken);
   await page.getByTestId("side-tray-add-side").click();
+  await expect
+    .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
+      timeout: 15000,
+    })
+    .toBe(3);
   await expect(page.getByTestId("side-tray-item-2")).toBeVisible();
   await page.getByTestId("side-tray-item-2").click();
   await fillPrimaryRichText(page, threeSideToken);
@@ -64,12 +83,15 @@ async function createViewerFixture(page: Parameters<typeof test>[0]["page"]) {
   };
 }
 
-function boxesOverlap(a: { x: number; y: number; width: number; height: number }, b: {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}) {
+function boxesOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  },
+) {
   return !(
     a.x + a.width <= b.x ||
     b.x + b.width <= a.x ||
@@ -79,7 +101,9 @@ function boxesOverlap(a: { x: number; y: number; width: number; height: number }
 }
 
 test.describe("Deck viewer revamp", () => {
-  test("renders read-only insight-style sidebar and card selection updates URL", async ({ page }) => {
+  test("renders read-only insight-style sidebar and card selection updates URL", async ({
+    page,
+  }) => {
     const fixture = await createViewerFixture(page);
     await page.goto(`/deck/${fixture.deckId}`);
 
@@ -89,56 +113,77 @@ test.describe("Deck viewer revamp", () => {
     await expect(page.getByTestId("side-tray-add-side")).toHaveCount(0);
 
     await page.getByTestId(`viewer-card-item-${fixture.cardThreeSide}`).click();
-    await expect(page).toHaveURL(new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`));
-    await expect(page.getByTestId("viewer-main-card")).toContainText(fixture.secondCardFrontToken);
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`),
+    );
+    await expect(page.getByTestId("viewer-side-dot-0")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-testid^="viewer-side-dot-"]')).toHaveCount(3);
   });
 
-  test("uses flip animation only for 2-side cards and instant switching for 3+ sides", async ({ page }) => {
+  test("uses flip animation only for 2-side cards and instant switching for 3+ sides", async ({
+    page,
+  }) => {
     const fixture = await createViewerFixture(page);
 
     await page.goto(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}`);
+    await page.getByTestId(`viewer-card-item-${fixture.cardTwoSide}`).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}$`),
+    );
+    await expect(page.locator('[data-testid^="viewer-side-dot-"]')).toHaveCount(2);
     await expect(page.getByTestId("viewer-main-card-flip-shell")).toBeVisible();
     await expect(page.getByTestId("viewer-main-card-face-front")).toBeVisible();
     await expect(page.getByTestId("viewer-main-card-face-back")).toBeVisible();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 1 / 2");
+    await expect(page.getByTestId("viewer-side-dot-0")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".deck-viewer-flip-inner")).not.toHaveClass(/is-flipped/);
 
     await page.getByTestId("viewer-main-card").click();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 2 / 2");
-    await expect(page.getByTestId("viewer-main-card")).toContainText(fixture.sideTwoToken);
+    await expect(page.getByTestId("viewer-side-dot-1")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".deck-viewer-flip-inner")).toHaveClass(/is-flipped/);
 
     await page.getByTestId("viewer-next-card").click();
-    await expect(page).toHaveURL(new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`));
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`),
+    );
     await expect(page.getByTestId("viewer-main-card-flip-shell")).toHaveCount(0);
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 1 / 3");
+    await expect(page.getByTestId("viewer-side-dot-0")).toHaveAttribute("aria-pressed", "true");
 
     await page.getByTestId("viewer-main-card").click();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 2 / 3");
+    await expect(page.getByTestId("viewer-side-dot-1")).toHaveAttribute("aria-pressed", "true");
     await page.getByTestId("viewer-main-card").click();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 3 / 3");
+    await expect(page.getByTestId("viewer-side-dot-2")).toHaveAttribute("aria-pressed", "true");
     await page.getByTestId("viewer-main-card").click();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 1 / 3");
+    await expect(page.getByTestId("viewer-side-dot-0")).toHaveAttribute("aria-pressed", "true");
 
     await page.getByTestId("viewer-main-card").click();
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 2 / 3");
+    await expect(page.getByTestId("viewer-side-dot-1")).toHaveAttribute("aria-pressed", "true");
     await page.getByTestId("viewer-prev-card").click();
-    await expect(page).toHaveURL(new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}$`));
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Side 1 / 2");
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}$`),
+    );
+    await expect(page.getByTestId("viewer-side-dot-0")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("supports prev/next boundaries and remains non-overlapping across viewport sizes", async ({ page }) => {
+  test("supports prev/next boundaries and remains non-overlapping across viewport sizes", async ({
+    page,
+  }) => {
     const fixture = await createViewerFixture(page);
     await page.goto(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}`);
 
     await expect(page.getByTestId("viewer-prev-card")).toBeDisabled();
     await expect(page.getByTestId("viewer-next-card")).toBeEnabled();
     await page.getByTestId("viewer-next-card").click();
-    await expect(page).toHaveURL(new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`));
-    await expect(page.getByTestId("viewer-card-counter")).toContainText("Card 2 / 2");
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardThreeSide}$`),
+    );
+    await expect(page.getByTestId("viewer-card-counter")).toContainText("2 / 2");
     await expect(page.getByTestId("viewer-next-card")).toBeDisabled();
     await expect(page.getByTestId("viewer-prev-card")).toBeEnabled();
 
     await page.getByTestId("viewer-prev-card").click();
-    await expect(page).toHaveURL(new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}$`));
+    await expect(page).toHaveURL(
+      new RegExp(`/deck/${fixture.deckId}/card/${fixture.cardTwoSide}$`),
+    );
 
     const viewports = [
       { width: 1536, height: 960 },

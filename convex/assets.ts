@@ -2,9 +2,11 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser } from "./lib/auth";
+import { assetDocValidator, assetWithResolvedUrlValidator } from "./lib/constants";
 
 export const generateUploadUrl = mutation({
   args: {},
+  returns: v.string(),
   handler: async (ctx) => {
     await ensureCurrentUser(ctx);
     return await ctx.storage.generateUploadUrl();
@@ -19,6 +21,10 @@ export const saveUploadedImage = mutation({
     width: v.optional(v.number()),
     height: v.optional(v.number()),
   },
+  returns: v.object({
+    assetId: v.id("assets"),
+    url: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
     const user = await ensureCurrentUser(ctx);
     const normalizedMime = args.mime?.trim().toLowerCase();
@@ -64,6 +70,7 @@ export const saveUploadedImage = mutation({
 
 export const getAsset = query({
   args: { assetId: v.id("assets") },
+  returns: assetWithResolvedUrlValidator,
   handler: async (ctx, args) => {
     const asset = await ctx.db.get(args.assetId);
     if (!asset) {
@@ -79,17 +86,20 @@ export const getAsset = query({
       }
     }
 
+    const resolvedUrl = asset.storageId
+      ? (await ctx.storage.getUrl(asset.storageId)) ?? null
+      : asset.url ?? null;
+
     return {
       ...asset,
-      resolvedUrl: asset.storageId
-        ? await ctx.storage.getUrl(asset.storageId)
-        : asset.url,
+      resolvedUrl,
     };
   },
 });
 
 export const listByDeck = query({
   args: { deckId: v.id("decks") },
+  returns: v.array(assetDocValidator),
   handler: async (ctx, args) => {
     await assertCanReadDeck(ctx, args.deckId);
     return await ctx.db

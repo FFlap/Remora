@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
-const port = Number(process.env.PLAYWRIGHT_PORT ?? 3001);
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+const host = process.env.PLAYWRIGHT_HOST ?? "localhost";
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${host}:${port}`;
 
 const shouldStartWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER !== "1";
 
@@ -19,7 +20,7 @@ export default defineConfig({
   },
   webServer: shouldStartWebServer
     ? {
-        command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
+        command: `npm run dev -- --host ${host} --port ${port}`,
         url: baseURL,
         timeout: 120000,
         reuseExistingServer: true,

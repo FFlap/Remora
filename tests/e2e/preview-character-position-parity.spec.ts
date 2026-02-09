@@ -27,7 +27,7 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
-async function readTextLayoutSignature(
+function readTextLayoutSignature(
   locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
 ): Promise<TextLayoutSignature> {
   return locator.evaluate((node) => {

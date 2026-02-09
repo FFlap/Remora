@@ -26,7 +26,7 @@ test.describe("Creative inline rich text position parity", () => {
     await page.getByTestId("mode-creative-button").click();
     const creativeCanvas = page.getByTestId("creative-card-canvas");
     await expect(creativeCanvas).toBeVisible();
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
 
     const staticRichText = page
       .locator('[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])')

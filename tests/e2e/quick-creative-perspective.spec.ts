@@ -32,14 +32,14 @@ async function drawStroke(
   from: { x: number; y: number },
   to: { x: number; y: number },
 ) {
-  await page.getByRole("button", { name: "Draw" }).click();
+  await page.getByTestId("creative-tool-draw").click();
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y);
   await page.mouse.up();
 }
 
-async function getQuickStrokeSnapshot(
+function getQuickStrokeSnapshot(
   page: Parameters<typeof test>[0]["page"],
 ): Promise<StrokeSnapshot[]> {
   return page.getByTestId("quick-live-preview-card").evaluate((node) => {
@@ -108,7 +108,7 @@ test.describe("Quick/Create perspective parity", () => {
 
     await page.getByTestId("mode-creative-button").click();
     await expect(creativeCanvas).toBeVisible();
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
 
     await page.getByTestId("mode-quick-button").click();
     await expect(quickPreview.locator("svg path")).toHaveCount(firstSnapshot.length);

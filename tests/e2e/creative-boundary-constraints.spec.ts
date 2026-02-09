@@ -32,7 +32,7 @@ test.describe("Creative Boundary Constraints", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
     await page.mouse.click(canvasBox.x + 130, canvasBox.y + 120);
 
     // Try dragging the selected text box far beyond top-left.

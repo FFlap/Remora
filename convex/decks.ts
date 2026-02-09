@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import {
   assertCanEditDeck,
@@ -8,46 +8,109 @@ import {
 } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
 import { createDefaultSideIR } from "./lib/sideIR";
-import { deckVisibilityValidator } from "./lib/constants";
+import {
+  deckDocValidator,
+  deckVisibilityValidator,
+  getEditShellReturnValidator,
+  getForViewerReturnValidator,
+} from "./lib/constants";
+import {
+  parseDeckMetaInput,
+  parseDeckSharingInput,
+} from "../shared/contracts/deckValidation";
 
 async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
-  const sections = await ctx.db
-    .query("sections")
-    .withIndex("by_deck_order", (q) => q.eq("deckId", deckId))
-    .collect();
+  const [sections, cards] = await Promise.all([
+    ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", deckId))
+      .collect(),
+    ctx.db
+      .query("cards")
+      .withIndex("by_deck", (q) => q.eq("deckId", deckId))
+      .collect(),
+  ]);
 
-  const sectionResults = await Promise.all(
-    sections.map(async (section) => {
-      const cards = await ctx.db
-        .query("cards")
-        .withIndex("by_section_order", (q) => q.eq("sectionId", section._id))
-        .collect();
+  const sidesByCardId = new Map<Id<"cards">, Doc<"cardSides">[]>();
+  const cardSides = await Promise.all(
+    cards.map((card) =>
+      ctx.db
+        .query("cardSides")
+        .withIndex("by_card_index", (q) => q.eq("cardId", card._id))
+        .collect(),
+    ),
+  );
+  cards.forEach((card, index) => {
+    sidesByCardId.set(card._id, cardSides[index]);
+  });
 
-      const cardsWithSides = await Promise.all(
-        cards.map(async (card) => {
-          const sides = await ctx.db
-            .query("cardSides")
-            .withIndex("by_card_index", (q) => q.eq("cardId", card._id))
-            .collect();
-          return {
-            ...card,
-            sides,
-          };
-        }),
-      );
+  const cardsBySection = new Map<Id<"sections">, Array<Doc<"cards"> & { sides: Doc<"cardSides">[] }>>();
+  for (const card of cards) {
+    const sectionCards = cardsBySection.get(card.sectionId) ?? [];
+    sectionCards.push({
+      ...card,
+      sides: sidesByCardId.get(card._id) ?? [],
+    });
+    cardsBySection.set(card.sectionId, sectionCards);
+  }
+  for (const sectionCards of cardsBySection.values()) {
+    sectionCards.sort((a, b) => a.order - b.order);
+  }
 
-      return {
-        ...section,
-        cards: cardsWithSides,
-      };
-    }),
+  return sections.map((section) => ({
+    ...section,
+    cards: cardsBySection.get(section._id) ?? [],
+  }));
+}
+
+type EditShellCard = Doc<"cards"> & {
+  frontSide: Doc<"cardSides"> | null;
+};
+
+async function loadDeckEditShell(ctx: QueryCtx, deckId: Id<"decks">) {
+  const [sections, cards] = await Promise.all([
+    ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", deckId))
+      .collect(),
+    ctx.db
+      .query("cards")
+      .withIndex("by_deck", (q) => q.eq("deckId", deckId))
+      .collect(),
+  ]);
+
+  const frontSides = await Promise.all(
+    cards.map((card) =>
+      ctx.db
+        .query("cardSides")
+        .withIndex("by_card_index", (q) => q.eq("cardId", card._id).eq("index", 0))
+        .first(),
+    ),
   );
 
-  return sectionResults;
+  const cardsBySection = new Map<Id<"sections">, EditShellCard[]>();
+  cards.forEach((card, index) => {
+    const sectionCards = cardsBySection.get(card.sectionId) ?? [];
+    sectionCards.push({
+      ...card,
+      frontSide: frontSides[index] ?? null,
+    });
+    cardsBySection.set(card.sectionId, sectionCards);
+  });
+
+  for (const sectionCards of cardsBySection.values()) {
+    sectionCards.sort((a, b) => a.order - b.order);
+  }
+
+  return sections.map((section) => ({
+    ...section,
+    cards: cardsBySection.get(section._id) ?? [],
+  }));
 }
 
 export const listMine = query({
   args: {},
+  returns: v.array(deckDocValidator),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -64,6 +127,7 @@ export const listMine = query({
 
 export const listPublic = query({
   args: {},
+  returns: v.array(deckDocValidator),
   handler: async (ctx) => {
     return await ctx.db
       .query("decks")
@@ -78,14 +142,23 @@ export const create = mutation({
     title: v.string(),
     description: v.optional(v.string()),
   },
+  returns: v.object({
+    deckId: v.id("decks"),
+    sectionId: v.id("sections"),
+    cardId: v.id("cards"),
+  }),
   handler: async (ctx, args) => {
     const user = await ensureCurrentUser(ctx);
     const now = Date.now();
+    const parsedMeta = parseDeckMetaInput({
+      title: args.title,
+      description: args.description ?? "",
+    });
 
     const deckId = await ctx.db.insert("decks", {
       ownerUserId: user._id,
-      title: args.title.trim(),
-      description: (args.description ?? "").trim(),
+      title: parsedMeta.title,
+      description: parsedMeta.description,
       visibility: "private",
       whitelistEmails: [normalizeEmail(user.email)].filter(Boolean),
       createdAt: now,
@@ -133,13 +206,19 @@ export const updateMeta = mutation({
     title: v.string(),
     description: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
+    const parsedMeta = parseDeckMetaInput({
+      title: args.title,
+      description: args.description,
+    });
     await ctx.db.patch(args.deckId, {
-      title: args.title.trim(),
-      description: args.description.trim(),
+      title: parsedMeta.title,
+      description: parsedMeta.description,
       updatedAt: Date.now(),
     });
+    return null;
   },
 });
 
@@ -149,34 +228,37 @@ export const updateSharing = mutation({
     visibility: deckVisibilityValidator,
     whitelistEmails: v.array(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
-
-    const emails = Array.from(
-      new Set(args.whitelistEmails.map((email) => normalizeEmail(email)).filter(Boolean)),
-    );
+    const parsedSharing = parseDeckSharingInput({
+      visibility: args.visibility,
+      whitelistEmails: args.whitelistEmails.map((email) => normalizeEmail(email)).filter(Boolean),
+    });
 
     await ctx.db.patch(args.deckId, {
-      visibility: args.visibility,
-      whitelistEmails: emails,
+      visibility: parsedSharing.visibility,
+      whitelistEmails: parsedSharing.whitelistEmails,
       updatedAt: Date.now(),
     });
+    return null;
   },
 });
 
-export const getForEdit = query({
+export const getEditShell = query({
   args: {
     deckId: v.id("decks"),
   },
+  returns: getEditShellReturnValidator,
   handler: async (ctx, args) => {
     const { deck, user } = await assertCanEditDeck(ctx, args.deckId);
-    const sections = await loadDeckTree(ctx, deck._id);
+    const sections = await loadDeckEditShell(ctx, deck._id);
 
     return {
       deck,
       sections,
       viewer: {
-        isOwner: true,
+        isOwner: true as const,
         user,
       },
     };
@@ -187,13 +269,18 @@ export const getForViewer = query({
   args: {
     deckId: v.id("decks"),
   },
+  returns: getForViewerReturnValidator,
   handler: async (ctx, args) => {
     const deck = await getDeckOrThrow(ctx, args.deckId);
     const decision = await getDeckReadDecision(ctx, deck);
 
     if (!decision.allowed) {
+      const deniedAccess =
+        decision.reason && decision.reason !== "not_found"
+          ? decision.reason
+          : "private";
       return {
-        access: decision.reason,
+        access: deniedAccess,
         deck: {
           _id: deck._id,
           title: deck.title,
@@ -205,7 +292,7 @@ export const getForViewer = query({
 
     const sections = await loadDeckTree(ctx, deck._id);
     return {
-      access: "granted",
+      access: "granted" as const,
       deck,
       sections,
       viewer: {
@@ -219,6 +306,7 @@ export const remove = mutation({
   args: {
     deckId: v.id("decks"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
 
@@ -273,5 +361,6 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.deckId);
+    return null;
   },
 });

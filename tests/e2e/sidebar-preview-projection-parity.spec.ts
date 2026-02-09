@@ -23,7 +23,7 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
-async function getProjection(locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>) {
+function getProjection(locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>) {
   return locator.evaluate((node) => {
     const wrappers = Array.from(node.querySelectorAll(":scope > div.absolute"));
     return wrappers.map((element) => {
@@ -56,7 +56,7 @@ test.describe("Sidebar preview projection parity", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
     await page.mouse.move(canvasBox.x + 80, canvasBox.y + 120);
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + 360, canvasBox.y + 210, { steps: 20 });

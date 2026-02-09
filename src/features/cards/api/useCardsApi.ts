@@ -31,6 +31,11 @@ export function useSaveSide() {
   return useMutation(api.cardSides.saveSide);
 }
 
+export function useEditorCard(cardId: string | Id<"cards"> | undefined) {
+  const typedCardId = cardId as Id<"cards"> | undefined;
+  return useQuery(api.cards.getEditorCard, typedCardId ? { cardId: typedCardId } : "skip");
+}
+
 export function useAddSide() {
   return useMutation(api.cardSides.addSide);
 }

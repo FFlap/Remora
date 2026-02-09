@@ -26,7 +26,7 @@ test.describe("Creative inline selection persistence", () => {
     await page.getByTestId("mode-creative-button").click();
     const creativeCanvas = page.getByTestId("creative-card-canvas");
     await expect(creativeCanvas).toBeVisible();
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
 
     const staticRichText = page
       .locator('[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])')
@@ -45,7 +45,17 @@ test.describe("Creative inline selection persistence", () => {
     await expect(inlineEditor).toBeVisible();
 
     const selectedBeforeTyping = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              data?: {
+                kind?: string;
+              };
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       return active?.data?.kind === "richText";
     });
@@ -56,7 +66,17 @@ test.describe("Creative inline selection persistence", () => {
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
     const selectedAfterTyping = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              data?: {
+                kind?: string;
+              };
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       return active?.data?.kind === "richText";
     });

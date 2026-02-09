@@ -3,20 +3,83 @@ import type { SideIR } from "../side-ir/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+function shouldTrackState(trackState: boolean, mounted: boolean) {
+  return trackState && mounted;
+}
+
+function startSaveState({
+  trackState,
+  mounted,
+  setState,
+  setLastError,
+}: {
+  trackState: boolean;
+  mounted: boolean;
+  setState: (state: SaveState) => void;
+  setLastError: (value: string | null) => void;
+}) {
+  if (!shouldTrackState(trackState, mounted)) return;
+  setState("saving");
+  setLastError(null);
+}
+
+function completeSaveState({
+  snapshot,
+  trackState,
+  mounted,
+  pendingSnapshot,
+  setState,
+}: {
+  snapshot: string;
+  trackState: boolean;
+  mounted: boolean;
+  pendingSnapshot: string;
+  setState: (state: SaveState) => void;
+}) {
+  if (!shouldTrackState(trackState, mounted)) return;
+  if (pendingSnapshot === snapshot) {
+    setState("saved");
+  }
+}
+
+function failSaveState({
+  error,
+  trackState,
+  mounted,
+  setState,
+  setLastError,
+}: {
+  error: unknown;
+  trackState: boolean;
+  mounted: boolean;
+  setState: (state: SaveState) => void;
+  setLastError: (value: string | null) => void;
+}) {
+  if (!shouldTrackState(trackState, mounted)) return;
+  setState("error");
+  setLastError(error instanceof Error ? error.message : "Save failed");
+}
+
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Hook coordinates debounced queueing, lifecycle, and status updates in one place for consistency.
 export function useAutosaveSide({
   cardId,
   sideIndex,
+  sideId,
+  sideIdentityKey,
   side,
   mode,
   onSave,
 }: {
   cardId: string;
   sideIndex: number;
+  sideId?: string;
+  sideIdentityKey?: string;
   side: SideIR;
   mode: "quick" | "creative";
   onSave: (params: {
     cardId: string;
     index: number;
+    sideId?: string;
     sideIR: SideIR;
     lastEditedMode: "quick" | "creative";
   }) => Promise<unknown>;
@@ -29,7 +92,9 @@ export function useAutosaveSide({
   const timeoutRef = useRef<number | null>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const mountedRef = useRef(true);
-  const sideKeyRef = useRef(`${cardId}:${sideIndex}`);
+  const sideKey = `${cardId}:${sideIndex}:${sideIdentityKey ?? ""}`;
+  const sideKeyRef = useRef(sideKey);
+  const initializedKeyRef = useRef<string | null>(null);
 
   const debounceMs = mode === "quick" ? 700 : 350;
 
@@ -37,18 +102,26 @@ export function useAutosaveSide({
     async (snapshot: string, trackState: boolean) => {
       saveQueueRef.current = saveQueueRef.current.then(async () => {
         if (snapshot === lastSaved.current) return;
-        const saveKey = `${cardId}:${sideIndex}`;
-
-        if (trackState && mountedRef.current) {
-          setState("saving");
-          setLastError(null);
+        const saveKey = sideKey;
+        if (sideKeyRef.current !== saveKey) {
+          return;
         }
+        startSaveState({
+          trackState,
+          mounted: mountedRef.current,
+          setState,
+          setLastError,
+        });
 
         try {
+          if (sideKeyRef.current !== saveKey) {
+            return;
+          }
           const parsed = JSON.parse(snapshot) as SideIR;
           await onSave({
             cardId,
             index: sideIndex,
+            sideId,
             sideIR: parsed,
             lastEditedMode: mode,
           });
@@ -56,23 +129,30 @@ export function useAutosaveSide({
             return;
           }
           lastSaved.current = snapshot;
-          if (trackState && mountedRef.current && pending.current === snapshot) {
-            setState("saved");
-          }
+          completeSaveState({
+            snapshot,
+            trackState,
+            mounted: mountedRef.current,
+            pendingSnapshot: pending.current,
+            setState,
+          });
         } catch (error) {
           if (sideKeyRef.current !== saveKey) {
             return;
           }
-          if (trackState && mountedRef.current) {
-            setState("error");
-            setLastError(error instanceof Error ? error.message : "Save failed");
-          }
+          failSaveState({
+            error,
+            trackState,
+            mounted: mountedRef.current,
+            setState,
+            setLastError,
+          });
         }
       });
 
       await saveQueueRef.current;
     },
-    [cardId, sideIndex, mode, onSave],
+    [cardId, mode, onSave, sideId, sideIndex, sideKey],
   );
 
   const persist = useCallback(async () => {
@@ -91,13 +171,19 @@ export function useAutosaveSide({
   }, []);
 
   useEffect(() => {
-    sideKeyRef.current = `${cardId}:${sideIndex}`;
+    const key = sideKey;
+    sideKeyRef.current = key;
+    if (initializedKeyRef.current === key) {
+      return;
+    }
+
+    initializedKeyRef.current = key;
     const serialized = JSON.stringify(side);
     lastSaved.current = serialized;
     pending.current = serialized;
     setState("idle");
     setLastError(null);
-  }, [cardId, sideIndex]);
+  }, [sideKey, side]);
 
   useEffect(() => {
     pending.current = JSON.stringify(side);
@@ -114,12 +200,17 @@ export function useAutosaveSide({
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current);
       }
+    };
+  }, [side, debounceMs, persist]);
+
+  useEffect(() => {
+    return () => {
       if (pending.current !== lastSaved.current) {
         const snapshot = pending.current;
         void enqueueSave(snapshot, false);
       }
     };
-  }, [side, debounceMs, persist, enqueueSave]);
+  }, [enqueueSave]);
 
   const retry = useCallback(() => {
     void persist();

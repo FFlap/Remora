@@ -32,7 +32,7 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
     await page.mouse.dblclick(canvasBox.x + 130, canvasBox.y + 120);
     await page.waitForTimeout(250);
     await page.mouse.click(canvasBox.x + 150, canvasBox.y + 130);
@@ -48,6 +48,7 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
     await page.getByTestId("creative-add-text-button").click();
+    await page.getByRole("button", { name: "Edit Text" }).click();
     await expect(page.getByTestId("creative-inline-richtext-editor")).toBeVisible();
 
     await page.getByTestId("mode-quick-button").click();
@@ -58,7 +59,7 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     await page.getByTestId("mode-creative-button").click();
     await expect(creativeCanvas).toBeVisible();
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
     await page.mouse.move(canvasBox.x + 80, canvasBox.y + 160);
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + canvasBox.width - 120, canvasBox.y + 220);
@@ -72,7 +73,7 @@ test.describe("Creative + Quick Rich Text Sync", () => {
       .toBeGreaterThanOrEqual(1);
 
     await page.getByTestId("mode-creative-button").click();
-    await page.getByRole("button", { name: "Erase" }).click();
+    await page.getByTestId("creative-tool-erase").click();
     await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + 190);
     await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + 190);
 

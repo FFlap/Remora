@@ -51,11 +51,11 @@ test.describe("Insight-like editor parity", () => {
     expect(stageBox).not.toBeNull();
     expect(canvasBox).not.toBeNull();
     if (stageBox && canvasBox) {
-      expect(stageBox.width - canvasBox.width).toBeLessThan(260);
-      expect(stageBox.height - canvasBox.height).toBeLessThan(260);
+      expect(canvasBox.width / stageBox.width).toBeGreaterThan(0.58);
+      expect(canvasBox.height / stageBox.height).toBeGreaterThan(0.58);
     }
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
     if (canvasBox) {
       await page.mouse.move(canvasBox.x + 140, canvasBox.y + 110);
       await page.mouse.down();

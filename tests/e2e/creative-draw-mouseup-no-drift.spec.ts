@@ -27,7 +27,7 @@ test.describe("Creative draw release stability", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
 
     await page.mouse.move(canvasBox.x + 52, canvasBox.y + 136);
     await page.mouse.down();

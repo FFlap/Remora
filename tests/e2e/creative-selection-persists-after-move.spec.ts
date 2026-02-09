@@ -32,14 +32,24 @@ test.describe("Creative selection persistence", () => {
     expect(canvasBox).not.toBeNull();
     if (!canvasBox) return;
 
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
     await page.mouse.move(canvasBox.x + 180, canvasBox.y + 130);
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + 260, canvasBox.y + 210, { steps: 12 });
     await page.mouse.up();
 
     const stillSelected = await page.evaluate(() => {
-      const canvas = (window as any).__remoraCreativeCanvas;
+      const canvas = (
+        window as Window & {
+          __remoraCreativeCanvas?: {
+            getActiveObject?: () => {
+              data?: {
+                kind?: string;
+              };
+            } | null;
+          };
+        }
+      ).__remoraCreativeCanvas;
       const active = canvas?.getActiveObject?.();
       return active?.data?.kind === "richText";
     });

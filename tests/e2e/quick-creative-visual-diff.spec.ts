@@ -29,9 +29,9 @@ test.describe("Quick/Create visual parity", () => {
     if (!canvasBox) return;
 
     // Keep the editor in select mode before switching to draw for deterministic pointer behavior.
-    await page.getByRole("button", { name: "Select" }).click();
+    await page.getByTestId("creative-tool-select").click();
 
-    await page.getByRole("button", { name: "Draw" }).click();
+    await page.getByTestId("creative-tool-draw").click();
     await page.mouse.move(canvasBox.x + 40, canvasBox.y + 120);
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + canvasBox.width - 20, canvasBox.y + 12);
