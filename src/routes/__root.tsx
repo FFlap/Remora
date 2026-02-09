@@ -13,6 +13,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexReactClient } from "convex/react";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
+import { Toaster } from "sonner";
 import appCss from "@/styles/app.css?url";
 
 export const Route = createRootRouteWithContext<{
@@ -39,6 +40,7 @@ function RootComponent() {
       <ConvexProviderWithClerk client={context.convexClient} useAuth={useAuth}>
         <RootDocument>
           <Outlet />
+          <Toaster richColors position="top-right" />
         </RootDocument>
       </ConvexProviderWithClerk>
     </ClerkProvider>

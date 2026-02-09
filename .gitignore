@@ -4,6 +4,19 @@ dist
 .vinxi
 .env
 .env.local
+.env.*
+!.env.example
 *.local
 .DS_Store
 .vercel
+
+# Playwright / E2E artifacts
+playwright-report/
+test-results/
+blob-report/
+
+
+# Test coverage and reports
+coverage/
+*.lcov
+junit*.xml
