@@ -25,6 +25,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const currentYear = new Date().getFullYear();
   return (
     <div className="landing-root relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white text-[#111111] selection:bg-blue-500 selection:text-white">
       <header className="absolute top-0 z-50 w-full bg-transparent">
@@ -355,7 +356,7 @@ function Home() {
           </div>
         </div>
         <div className="mx-auto mt-24 flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-gray-50 pt-10 md:flex-row">
-          <p className="text-[12px] tracking-wider text-gray-400">© 2024 Remora Laboratory. Designed for excellence.</p>
+          <p className="text-[12px] tracking-wider text-gray-400">© {currentYear} Remora Laboratory. Designed for excellence.</p>
           <div className="flex gap-8">
             <a className="text-gray-400 transition-colors hover:text-black" href="https://remora.app" aria-label="Website">
               <Globe className="h-5 w-5" />

@@ -38,7 +38,7 @@ test.describe("Preview rich text hover scroll", () => {
 
     await page.mouse.move(box.x + box.width / 2, box.y + Math.min(24, box.height / 2));
     const before = await previewRichText.evaluate((node) => node.scrollTop);
-    const after = await previewRichText.evaluate((node) => {
+    await previewRichText.evaluate((node) => {
       node.dispatchEvent(
         new WheelEvent("wheel", {
           deltaY: 720,
@@ -46,8 +46,9 @@ test.describe("Preview rich text hover scroll", () => {
           cancelable: true,
         }),
       );
-      return node.scrollTop;
     });
-    expect(after).toBeGreaterThan(before);
+    await expect
+      .poll(() => previewRichText.evaluate((node) => node.scrollTop), { timeout: 2000 })
+      .toBeGreaterThan(before);
   });
 });

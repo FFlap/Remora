@@ -43,8 +43,8 @@ async function readTextLayoutSignature(
       const value = textNode.textContent ?? "";
       if (value.length > 0 && value.trim().length > 0) {
         range.selectNodeContents(textNode);
-        const rects = Array.from(range.getClientRects());
-        for (const rect of rects) {
+        const clientRects = Array.from(range.getClientRects());
+        for (const rect of clientRects) {
           if (rect.width <= 0 || rect.height <= 0) continue;
           rects.push({
             x: (rect.left - hostRect.left) / hostRect.width,

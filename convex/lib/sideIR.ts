@@ -1,6 +1,37 @@
+import {
+  DEFAULT_CREATIVE_LAYOUT,
+  DEFAULT_QUICK_LAYOUT,
+  DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
+} from "../../shared/sideIRDefaults";
+
 export type SideIR = {
   version: 1;
-  elements: Array<Record<string, unknown>>;
+  elements: Array<{
+    id: string;
+    type: "richText" | "image" | "embed" | "stroke";
+    quick: {
+      order: number;
+    };
+    creative: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rotation: number;
+    };
+    lexical?: unknown;
+    assetId?: string;
+    url?: string;
+    alt?: string;
+    points?: number[][];
+    svgPath?: string;
+    baseWidth?: number;
+    baseHeight?: number;
+    style?: {
+      color: string;
+      width: number;
+    };
+  }>;
   layout: {
     quickLayout: {
       mode: "centered";
@@ -59,23 +90,13 @@ export function createDefaultSideIR(seed = "1"): SideIR {
           order: 0,
         },
         creative: {
-          x: 64,
-          y: 64,
-          width: 520,
-          height: 280,
-          rotation: 0,
+          ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
         },
       },
     ],
     layout: {
-      quickLayout: { mode: "centered", cardRatio: 1.5, previewScale: 1 },
-      creativeLayout: {
-        width: 672,
-        height: 448,
-        background: "#ffffff",
-        fixedViewport: true,
-        padding: 24,
-      },
+      quickLayout: { ...DEFAULT_QUICK_LAYOUT },
+      creativeLayout: { ...DEFAULT_CREATIVE_LAYOUT },
     },
   };
 }

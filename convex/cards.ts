@@ -83,9 +83,17 @@ export const reorderInSection = mutation({
       .collect();
 
     const cardSet = new Set(cards.map((c) => c._id));
-    for (const id of args.orderedCardIds) {
+    const orderedSet = new Set(args.orderedCardIds);
+    if (
+      orderedSet.size !== args.orderedCardIds.length ||
+      orderedSet.size !== cardSet.size
+    ) {
+      throw new Error("Invalid or incomplete card ordering");
+    }
+
+    for (const id of orderedSet) {
       if (!cardSet.has(id)) {
-        throw new Error("Invalid card list");
+        throw new Error("Invalid or incomplete card ordering");
       }
     }
 

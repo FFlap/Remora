@@ -1,5 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/lib/convexApi";
+import { api, type Id } from "@/lib/convexApi";
+
+function asDeckId(deckId: string | Id<"decks"> | undefined) {
+  return deckId as Id<"decks"> | undefined;
+}
 
 export function useMyDecks() {
   return useQuery(api.decks.listMine, {});
@@ -9,12 +13,14 @@ export function usePublicDecks() {
   return useQuery(api.decks.listPublic, {});
 }
 
-export function useDeckForEdit(deckId: string | undefined) {
-  return useQuery(api.decks.getForEdit, deckId ? ({ deckId } as any) : "skip");
+export function useDeckForEdit(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = asDeckId(deckId);
+  return useQuery(api.decks.getForEdit, typedDeckId ? { deckId: typedDeckId } : "skip");
 }
 
-export function useDeckForViewer(deckId: string | undefined) {
-  return useQuery(api.decks.getForViewer, deckId ? ({ deckId } as any) : "skip");
+export function useDeckForViewer(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = asDeckId(deckId);
+  return useQuery(api.decks.getForViewer, typedDeckId ? { deckId: typedDeckId } : "skip");
 }
 
 export function useCreateDeck() {

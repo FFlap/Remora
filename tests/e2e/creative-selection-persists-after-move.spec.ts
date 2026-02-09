@@ -38,6 +38,13 @@ test.describe("Creative selection persistence", () => {
     await page.mouse.move(canvasBox.x + 260, canvasBox.y + 210, { steps: 12 });
     await page.mouse.up();
 
+    const stillSelected = await page.evaluate(() => {
+      const canvas = (window as any).__remoraCreativeCanvas;
+      const active = canvas?.getActiveObject?.();
+      return active?.data?.kind === "richText";
+    });
+    expect(stillSelected).toBeTruthy();
+
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
   });
 });

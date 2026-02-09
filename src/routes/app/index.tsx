@@ -5,5 +5,5 @@ export const Route = createFileRoute("/app/")({
 });
 
 function AppIndex() {
-  return <Navigate to="/app/decks" />;
+  return <Navigate to="/app/decks" replace />;
 }

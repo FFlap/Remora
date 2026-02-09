@@ -1,18 +1,18 @@
-import type { SideIR } from "./side-ir/types";
+import type { RichTextBlock, SideIR } from "./side-ir/types";
 
 export function extractFrontPreview(side: SideIR | undefined) {
   if (!side) {
     return "Empty side";
   }
 
-  const textBlock = side.elements.find((el) => el.type === "richText") as
-    | { lexical?: any }
-    | undefined;
-
-  if (textBlock?.lexical?.root?.children) {
-    const text = collectLexicalText(textBlock.lexical.root.children).trim();
-    if (text) {
-      return text.slice(0, 72);
+  const textBlock = side.elements.find((el): el is RichTextBlock => el.type === "richText");
+  if (textBlock?.lexical && typeof textBlock.lexical === "object") {
+    const root = (textBlock.lexical as { root?: { children?: unknown[] } }).root;
+    if (Array.isArray(root?.children)) {
+      const text = collectLexicalText(root.children).trim();
+      if (text) {
+        return text.slice(0, 72);
+      }
     }
   }
 
@@ -28,14 +28,15 @@ export function extractFrontPreview(side: SideIR | undefined) {
   return "Empty side";
 }
 
-function collectLexicalText(nodes: any[]): string {
+function collectLexicalText(nodes: unknown[]): string {
   return nodes
     .map((node) => {
-      if (typeof node.text === "string") {
-        return node.text;
+      const lexicalNode = node as { text?: unknown; children?: unknown[] };
+      if (typeof lexicalNode.text === "string") {
+        return lexicalNode.text;
       }
-      if (Array.isArray(node.children)) {
-        return collectLexicalText(node.children);
+      if (Array.isArray(lexicalNode.children)) {
+        return collectLexicalText(lexicalNode.children);
       }
       return "";
     })

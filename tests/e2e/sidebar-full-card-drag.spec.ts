@@ -47,5 +47,9 @@ test.describe("Sidebar full-card drag", () => {
     await page.mouse.up();
 
     await expect(page.getByText(/was dropped over droppable area/i)).toBeVisible();
+    const afterOrder = await cardPreviews.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("data-testid") ?? ""),
+    );
+    expect(afterOrder).not.toEqual(beforeOrder);
   });
 });

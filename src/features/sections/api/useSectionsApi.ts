@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/lib/convexApi";
+import { api, type Id } from "@/lib/convexApi";
 
-export function useSections(deckId: string | undefined) {
-  return useQuery(api.sections.listByDeck, deckId ? ({ deckId } as any) : "skip");
+export function useSections(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = deckId as Id<"decks"> | undefined;
+  return useQuery(api.sections.listByDeck, typedDeckId ? { deckId: typedDeckId } : "skip");
 }
 
 export function useCreateSection() {

@@ -25,18 +25,19 @@ test.describe("Long text preview consistency", () => {
     await quickEditor.click();
     await quickEditor.fill(CONSISTENCY_LONG_TEXT);
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    const expectedSnippet = CONSISTENCY_LONG_TEXT.slice(0, 24);
 
     const quickContent = page.getByTestId("quick-live-preview-card-content");
     await expect(quickContent).toBeVisible();
     const quickRichText = page.locator('[data-testid^="quick-live-preview-card-richtext-"]').first();
-    await expect(quickRichText).toContainText("asdsaddsaddsaddsajj");
+    await expect(quickRichText).toContainText(expectedSnippet);
 
     const sidebarPreviewRoot = page.locator('[data-testid^="card-sidebar-preview-"] > div').first();
     await expect(sidebarPreviewRoot).toBeVisible();
     const sidebarContent = sidebarPreviewRoot.locator(":scope > div").first();
     await expect(sidebarContent).toBeVisible();
     const sidebarRichText = sidebarContent.locator(":scope > div.absolute > div").first();
-    await expect(sidebarRichText).toContainText("asdsaddsaddsaddsajj");
+    await expect(sidebarRichText).toContainText(expectedSnippet);
 
     const quickOverflow = await quickRichText.evaluate((node) => node.scrollHeight > node.clientHeight + 1);
     const sidebarOverflow = await sidebarRichText.evaluate((node) => node.scrollHeight > node.clientHeight + 1);
@@ -111,14 +112,13 @@ test.describe("Long text preview consistency", () => {
     const creativeRichTexts = page.locator(
       '[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])',
     );
-    await expect(creativeRichTexts.first()).toContainText("asdsaddsaddsaddsajj");
+    await expect(creativeRichTexts.first()).toContainText(expectedSnippet);
     const creativeNodeCount = await creativeRichTexts.count();
     expect(creativeNodeCount).toBeGreaterThan(0);
 
     const creativeOverflowCount = await creativeRichTexts.evaluateAll((nodes) =>
       nodes.filter((node) => node.scrollHeight > node.clientHeight + 1).length,
     );
-    expect(creativeOverflowCount).toBeGreaterThanOrEqual(0);
 
     if (creativeOverflowCount > 0) {
       const creativeScrollDelta = await creativeRichTexts.evaluateAll((nodes) => {
@@ -153,7 +153,7 @@ test.describe("Long text preview consistency", () => {
     const quickTextProjection = quickProjection.filter((entry) => entry.textContent.length > 0);
     const creativeTextProjection = creativeProjection.filter((entry) => entry.textContent.length > 0);
     expect(creativeTextProjection.length).toBeGreaterThan(0);
-    expect(creativeTextProjection[0]?.textContent).toContain("asdsaddsaddsaddsajj");
-    expect(quickTextProjection[0]?.textContent).toContain("asdsaddsaddsaddsajj");
+    expect(creativeTextProjection[0]?.textContent).toContain(expectedSnippet);
+    expect(quickTextProjection[0]?.textContent).toContain(expectedSnippet);
   });
 });

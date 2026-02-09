@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import {
   assertCanEditDeck,
   getDeckOrThrow,
@@ -10,24 +10,24 @@ import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
 import { createDefaultSideIR } from "./lib/sideIR";
 import { deckVisibilityValidator } from "./lib/constants";
 
-async function loadDeckTree(ctx: any, deckId: Id<"decks">) {
+async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
   const sections = await ctx.db
     .query("sections")
-    .withIndex("by_deck_order", (q: any) => q.eq("deckId", deckId))
+    .withIndex("by_deck_order", (q) => q.eq("deckId", deckId))
     .collect();
 
   const sectionResults = await Promise.all(
-    sections.map(async (section: any) => {
+    sections.map(async (section) => {
       const cards = await ctx.db
         .query("cards")
-        .withIndex("by_section_order", (q: any) => q.eq("sectionId", section._id))
+        .withIndex("by_section_order", (q) => q.eq("sectionId", section._id))
         .collect();
 
       const cardsWithSides = await Promise.all(
-        cards.map(async (card: any) => {
+        cards.map(async (card) => {
           const sides = await ctx.db
             .query("cardSides")
-            .withIndex("by_card_index", (q: any) => q.eq("cardId", card._id))
+            .withIndex("by_card_index", (q) => q.eq("cardId", card._id))
             .collect();
           return {
             ...card,
@@ -263,7 +263,11 @@ export const remove = mutation({
 
     for (const asset of assets) {
       if (asset.storageId) {
-        await ctx.storage.delete(asset.storageId);
+        try {
+          await ctx.storage.delete(asset.storageId);
+        } catch (error) {
+          console.error(`Failed to delete storage for asset ${asset._id}`, error);
+        }
       }
       await ctx.db.delete(asset._id);
     }

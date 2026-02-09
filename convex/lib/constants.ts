@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 
+function literalUnion<T extends readonly [string, ...string[]]>(values: T) {
+  const literals = values.map((value) => v.literal(value)) as [
+    ReturnType<typeof v.literal>,
+    ...ReturnType<typeof v.literal>[],
+  ];
+  return v.union(...literals);
+}
+
 export const DECK_VISIBILITIES = [
   "public",
   "unlisted",
@@ -9,17 +17,12 @@ export const DECK_VISIBILITIES = [
 
 export type DeckVisibility = (typeof DECK_VISIBILITIES)[number];
 
-export const deckVisibilityValidator = v.union(
-  v.literal("public"),
-  v.literal("unlisted"),
-  v.literal("private"),
-  v.literal("whitelist"),
-);
+export const deckVisibilityValidator = literalUnion(DECK_VISIBILITIES);
 
 export const EDIT_MODES = ["quick", "creative"] as const;
 export type EditMode = (typeof EDIT_MODES)[number];
 
-export const editModeValidator = v.union(v.literal("quick"), v.literal("creative"));
+export const editModeValidator = literalUnion(EDIT_MODES);
 
 export const ACCESS_REQUEST_STATUSES = [
   "pending",
@@ -29,11 +32,7 @@ export const ACCESS_REQUEST_STATUSES = [
 
 export type AccessRequestStatus = (typeof ACCESS_REQUEST_STATUSES)[number];
 
-export const accessRequestStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("approved"),
-  v.literal("rejected"),
-);
+export const accessRequestStatusValidator = literalUnion(ACCESS_REQUEST_STATUSES);
 
 const creativeTransformValidator = v.object({
   x: v.number(),

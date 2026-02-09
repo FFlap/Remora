@@ -330,7 +330,10 @@ export function LexicalRichTextView({
           ? (event) => {
               const node = event.currentTarget;
               if (node.scrollHeight <= node.clientHeight + 1) return;
-              node.scrollTop += event.deltaY;
+              if (!event.nativeEvent.isTrusted) {
+                event.preventDefault();
+                node.scrollTop += event.deltaY;
+              }
               event.stopPropagation();
             }
           : undefined

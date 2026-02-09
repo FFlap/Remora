@@ -32,6 +32,7 @@ function SidebarItem({
 }: React.ComponentProps<"button"> & { active?: boolean }) {
   return (
     <button
+      type="button"
       className={cn(
         "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         active && "bg-sidebar-accent text-sidebar-accent-foreground",

@@ -1,10 +1,15 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/lib/convexApi";
+import { api, type Id } from "@/lib/convexApi";
 
-export function useMyRequestStatus(deckId: string | undefined) {
+function asDeckId(deckId: string | Id<"decks"> | undefined) {
+  return deckId as Id<"decks"> | undefined;
+}
+
+export function useMyRequestStatus(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = asDeckId(deckId);
   return useQuery(
     api.accessRequests.myRequestStatus,
-    deckId ? ({ deckId } as any) : "skip",
+    typedDeckId ? { deckId: typedDeckId } : "skip",
   );
 }
 
@@ -12,10 +17,11 @@ export function useRequestAccess() {
   return useMutation(api.accessRequests.requestAccess);
 }
 
-export function useDeckAccessRequests(deckId: string | undefined) {
+export function useDeckAccessRequests(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = asDeckId(deckId);
   return useQuery(
     api.accessRequests.listForDeckOwner,
-    deckId ? ({ deckId } as any) : "skip",
+    typedDeckId ? { deckId: typedDeckId } : "skip",
   );
 }
 

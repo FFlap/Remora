@@ -35,16 +35,18 @@ function NewDeckPage() {
             {hydrated ? "yes" : "no"}
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Title</p>
+            <label htmlFor="new-deck-title" className="text-sm font-medium">Title</label>
             <Input
+              id="new-deck-title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Biology Midterm"
             />
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Description</p>
+            <label htmlFor="new-deck-description" className="text-sm font-medium">Description</label>
             <Textarea
+              id="new-deck-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Cells, mitosis, and genetics"
@@ -59,7 +61,7 @@ function NewDeckPage() {
                 const result = await createDeck({
                   title,
                   description,
-                } as any);
+                });
                 toast.success("Deck created");
                 void navigate({
                   to: "/app/decks/$deckId/edit/card/$cardId",
@@ -68,6 +70,8 @@ function NewDeckPage() {
                     cardId: String(result.cardId),
                   },
                 });
+              } catch {
+                toast.error("Failed to create deck");
               } finally {
                 setSaving(false);
               }

@@ -42,10 +42,14 @@ export function ShareDeckDialog({
 
   const parsedEmails = useMemo(
     () =>
-      emailsRaw
-        .split(/[,\n]/)
-        .map((entry) => entry.trim().toLowerCase())
-        .filter(Boolean),
+      Array.from(
+        new Set(
+          emailsRaw
+            .split(/[,\n]/)
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ),
     [emailsRaw],
   );
 

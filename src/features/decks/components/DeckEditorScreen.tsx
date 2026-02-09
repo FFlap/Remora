@@ -831,10 +831,6 @@ export function DeckEditorScreen({
                   <QuickEditor
                     side={sideHistory.present}
                     onApply={sideHistory.apply}
-                    canUndo={sideHistory.canUndo}
-                    canRedo={sideHistory.canRedo}
-                    onUndo={sideHistory.undo}
-                    onRedo={sideHistory.redo}
                   />
                 ) : (
                   <CreativeEditor

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import type { Doc, Id } from "@/lib/convexApi";
 import { cn } from "@/lib/utils";
 import { useDeckForViewer, useUpdateDeckSharing } from "@/features/decks/api/useDecksApi";
 import {
@@ -23,6 +24,10 @@ import {
 import { asSideIR, createDefaultSideIR } from "@/features/cards/side-ir/types";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import { ShareDeckDialog } from "@/features/sharing/ShareDeckDialog";
+
+type ViewerSide = Doc<"cardSides">;
+type ViewerCard = Doc<"cards"> & { sides: ViewerSide[] };
+type ViewerSection = Doc<"sections"> & { cards: ViewerCard[] };
 
 export function DeckViewerScreen({
   deckId,
@@ -38,9 +43,13 @@ export function DeckViewerScreen({
   const requestAccess = useRequestAccess();
 
   const [requestMessage, setRequestMessage] = useState("");
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestingAccess, setRequestingAccess] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>(preselectedCardId);
   const [sideIndex, setSideIndex] = useState(0);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const typedDeckId = deckId as Id<"decks">;
+  const viewerSections = (data?.access === "granted" ? (data.sections as ViewerSection[]) : []) ?? [];
 
   const orderedCards = useMemo(() => {
     if (!data || data.access !== "granted") return [];
@@ -49,12 +58,12 @@ export function DeckViewerScreen({
       cardId: string;
       sectionId: string;
       sectionTitle: string;
-      card: any;
+      card: ViewerCard;
       sectionCardIndex: number;
     }> = [];
 
-    data.sections.forEach((section: any) => {
-      section.cards.forEach((card: any, index: number) => {
+    viewerSections.forEach((section) => {
+      section.cards.forEach((card, index) => {
         flattened.push({
           cardId: String(card._id),
           sectionId: String(section._id),
@@ -66,7 +75,7 @@ export function DeckViewerScreen({
     });
 
     return flattened;
-  }, [data]);
+  }, [data, viewerSections]);
 
   const selectedCardEntry = useMemo(() => {
     if (orderedCards.length === 0) return null;
@@ -96,7 +105,7 @@ export function DeckViewerScreen({
 
   useEffect(() => {
     if (!data || data.access !== "granted") return;
-    const sectionIds = new Set(data.sections.map((section: any) => String(section._id)));
+    const sectionIds = new Set(viewerSections.map((section) => String(section._id)));
     setCollapsedSections((current) => {
       const next: Record<string, boolean> = {};
       Object.keys(current).forEach((sectionId) => {
@@ -104,7 +113,7 @@ export function DeckViewerScreen({
       });
       return next;
     });
-  }, [data]);
+  }, [data, viewerSections]);
 
   useEffect(() => {
     if (selectedCardId) {
@@ -113,15 +122,15 @@ export function DeckViewerScreen({
   }, [selectedCardId]);
 
   const sortedSides = useMemo(
-    () => [...(selectedCard?.sides ?? [])].sort((a: any, b: any) => a.index - b.index),
+    () => [...(selectedCard?.sides ?? [])].sort((a, b) => a.index - b.index),
     [selectedCard],
   );
   const sideCount = sortedSides.length;
-  const selectedSide = sortedSides.find((entry: any) => entry.index === sideIndex) ?? sortedSides[0];
+  const selectedSide = sortedSides.find((entry) => entry.index === sideIndex) ?? sortedSides[0];
   const selectedSideIR = asSideIR(selectedSide?.sideIR);
   const activeSidePosition = Math.max(
     0,
-    sortedSides.findIndex((entry: any) => entry.index === selectedSide?.index),
+    sortedSides.findIndex((entry) => entry.index === selectedSide?.index),
   );
 
   const orderedCardIndex = selectedCardEntry
@@ -149,7 +158,7 @@ export function DeckViewerScreen({
       return;
     }
     setSideIndex((current) => {
-      const currentPosition = sortedSides.findIndex((entry: any) => entry.index === current);
+      const currentPosition = sortedSides.findIndex((entry) => entry.index === current);
       const nextPosition = (currentPosition + 1) % sortedSides.length;
       return sortedSides[nextPosition].index;
     });
@@ -199,16 +208,28 @@ export function DeckViewerScreen({
                     placeholder="Optional message to deck owner"
                   />
                   <Button
+                    disabled={requestingAccess}
                     onClick={async () => {
-                      await requestAccess({
-                        deckId,
-                        message: requestMessage,
-                      } as any);
-                      toast.success("Access requested");
+                      setRequestingAccess(true);
+                      setRequestError(null);
+                      try {
+                        await requestAccess({
+                          deckId: typedDeckId,
+                          message: requestMessage,
+                        });
+                        toast.success("Access requested");
+                      } catch (error) {
+                        const message = error instanceof Error ? error.message : "Failed to request access";
+                        setRequestError(message);
+                        toast.error(message);
+                      } finally {
+                        setRequestingAccess(false);
+                      }
                     }}
                   >
-                    Request access
+                    {requestingAccess ? "Requesting..." : "Request access"}
                   </Button>
+                  {requestError && <p className="text-xs text-destructive">{requestError}</p>}
                 </div>
               </SignedIn>
             )}
@@ -260,7 +281,10 @@ export function DeckViewerScreen({
             <ShareDeckDialog
               deck={data.deck}
               onSave={async (payload) => {
-                await updateSharing(payload as any);
+                await updateSharing({
+                  ...payload,
+                  deckId: payload.deckId as Id<"decks">,
+                });
                 toast.success("Sharing updated");
               }}
             />
@@ -277,11 +301,11 @@ export function DeckViewerScreen({
 
         <div className="deck-viewer-sidebar-scroll overflow-y-auto overflow-x-hidden">
           <div className="space-y-2">
-            {data.sections.map((section: any) => {
+            {viewerSections.map((section) => {
               const sectionId = String(section._id);
               const isCollapsed = collapsedSections[sectionId] ?? false;
               const isActiveSection = section.cards.some(
-                (card: any) => String(card._id) === selectedCardEntry?.cardId,
+                (card) => String(card._id) === selectedCardEntry?.cardId,
               );
 
               return (
@@ -322,10 +346,10 @@ export function DeckViewerScreen({
 
                   {!isCollapsed && (
                     <div className="space-y-2 p-2">
-                      {section.cards.map((card: any, index: number) => {
+                      {section.cards.map((card, index) => {
                         const cardId = String(card._id);
                         const isActive = cardId === selectedCardEntry?.cardId;
-                        const front = card.sides?.find((entry: any) => entry.index === 0) ?? card.sides?.[0];
+                        const front = card.sides?.find((entry) => entry.index === 0) ?? card.sides?.[0];
                         return (
                           <button
                             key={cardId}
@@ -418,7 +442,7 @@ export function DeckViewerScreen({
                   )}
                 </button>
                 <div className="deck-viewer-side-dots" data-testid="viewer-side-dots" aria-label="Card sides">
-                  {sortedSides.map((entry: any, index: number) => (
+                  {sortedSides.map((entry, index) => (
                     <button
                       key={entry._id ?? `side-dot-${entry.index}`}
                       type="button"

@@ -1,3 +1,9 @@
+import {
+  DEFAULT_CREATIVE_LAYOUT,
+  DEFAULT_QUICK_LAYOUT,
+  DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
+} from "../../../../shared/sideIRDefaults";
+
 export type ElementKind = "richText" | "image" | "embed" | "stroke";
 
 export type CreativeTransform = {
@@ -71,20 +77,6 @@ export type SideIR = {
   };
 };
 
-const DEFAULT_QUICK_LAYOUT: QuickLayout = {
-  mode: "centered",
-  cardRatio: 1.5,
-  previewScale: 1,
-};
-
-const DEFAULT_CREATIVE_LAYOUT: CreativeLayout = {
-  width: 760,
-  height: 508,
-  background: "#ffffff",
-  fixedViewport: true,
-  padding: 24,
-};
-
 export function createDefaultSideIR(seed = "1"): SideIR {
   return {
     version: 1,
@@ -124,13 +116,7 @@ export function createDefaultSideIR(seed = "1"): SideIR {
           },
         },
         quick: { order: 0 },
-        creative: {
-          x: 80,
-          y: 80,
-          width: 500,
-          height: 240,
-          rotation: 0,
-        },
+        creative: { ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS },
       },
     ],
     layout: {
@@ -179,6 +165,46 @@ function normalizeLayout(layout: unknown): SideIR["layout"] {
   return { quickLayout, creativeLayout };
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isValidCreativeTransform(value: unknown): value is CreativeTransform {
+  if (!isObjectRecord(value)) return false;
+  return (
+    typeof value.x === "number" &&
+    typeof value.y === "number" &&
+    typeof value.width === "number" &&
+    typeof value.height === "number" &&
+    typeof value.rotation === "number"
+  );
+}
+
+function isValidElement(element: unknown): element is SideElement {
+  if (!isObjectRecord(element)) return false;
+  if (typeof element.id !== "string") return false;
+  if (!isObjectRecord(element.quick) || typeof element.quick.order !== "number") return false;
+  if (!isValidCreativeTransform(element.creative)) return false;
+
+  switch (element.type) {
+    case "richText":
+      return true;
+    case "image":
+      return true;
+    case "embed":
+      return typeof element.url === "string";
+    case "stroke":
+      return (
+        Array.isArray(element.points) &&
+        isObjectRecord(element.style) &&
+        typeof element.style.color === "string" &&
+        typeof element.style.width === "number"
+      );
+    default:
+      return false;
+  }
+}
+
 export function asSideIR(value: unknown): SideIR {
   if (!value || typeof value !== "object") {
     return createDefaultSideIR();
@@ -191,7 +217,7 @@ export function asSideIR(value: unknown): SideIR {
 
   return {
     version: 1,
-    elements: maybe.elements as SideElement[],
+    elements: maybe.elements.filter(isValidElement),
     layout: normalizeLayout((maybe as { layout?: unknown }).layout),
   };
 }

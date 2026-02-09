@@ -28,10 +28,13 @@ import {
   useUpdateDeckMeta,
   useUpdateDeckSharing,
 } from "@/features/decks/api/useDecksApi";
+import type { Doc } from "@/lib/convexApi";
 
 export const Route = createFileRoute("/app/decks/")({
   component: DeckListPage,
 });
+
+type DeckListItem = Doc<"decks">;
 
 function DeckListPage() {
   const navigate = useNavigate();
@@ -41,7 +44,7 @@ function DeckListPage() {
   const deleteDeck = useDeleteDeck();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [deckInSettings, setDeckInSettings] = useState<any | null>(null);
+  const [deckInSettings, setDeckInSettings] = useState<DeckListItem | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<
@@ -74,7 +77,7 @@ function DeckListPage() {
     return () => cancelAnimationFrame(frame);
   }, [focusField, isSettingsOpen]);
 
-  const openSettings = (deck: any, initialFocus: "title" | "description" | "visibility") => {
+  const openSettings = (deck: DeckListItem, initialFocus: "title" | "description" | "visibility") => {
     setDeckInSettings(deck);
     setTitle(deck.title ?? "");
     setDescription(deck.description ?? "");
@@ -99,13 +102,13 @@ function DeckListPage() {
         deckId: deckInSettings._id,
         title: nextTitle,
         description,
-      } as any);
+      });
 
       await updateDeckSharing({
         deckId: deckInSettings._id,
         visibility,
         whitelistEmails: deckInSettings.whitelistEmails ?? [],
-      } as any);
+      });
 
       toast.success("Deck settings saved");
       setIsSettingsOpen(false);
@@ -118,7 +121,7 @@ function DeckListPage() {
     }
   };
 
-  const handleDeleteDeck = async (deck: any) => {
+  const handleDeleteDeck = async (deck: DeckListItem) => {
     if (!window.confirm(`Delete "${deck.title}"? This cannot be undone.`)) {
       return;
     }
@@ -126,7 +129,7 @@ function DeckListPage() {
     const deckId = String(deck._id);
     setDeletingDeckId(deckId);
     try {
-      await deleteDeck({ deckId: deck._id } as any);
+      await deleteDeck({ deckId: deck._id });
       toast.success("Deck deleted");
       if (deckInSettings?._id === deck._id) {
         setIsSettingsOpen(false);
@@ -156,7 +159,7 @@ function DeckListPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {decks.map((deck: any) => (
+        {decks.map((deck) => (
           <Card
             key={deck._id}
             role="button"
@@ -180,7 +183,7 @@ function DeckListPage() {
           >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-3">
-                <CardTitle className="line-clamp-2 break-words pr-1 leading-snug">{deck.title}</CardTitle>
+                <CardTitle className="break-words pr-1 leading-snug">{deck.title}</CardTitle>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -241,8 +244,9 @@ function DeckListPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Deck name</p>
+              <label htmlFor="deck-settings-title" className="text-sm font-medium">Deck name</label>
               <Input
+                id="deck-settings-title"
                 ref={titleRef}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
@@ -250,8 +254,9 @@ function DeckListPage() {
               />
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">Description</p>
+              <label htmlFor="deck-settings-description" className="text-sm font-medium">Description</label>
               <Textarea
+                id="deck-settings-description"
                 ref={descriptionRef}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
@@ -259,8 +264,9 @@ function DeckListPage() {
               />
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium">Share status</p>
+              <label htmlFor="deck-settings-visibility" className="text-sm font-medium">Share status</label>
               <select
+                id="deck-settings-visibility"
                 ref={visibilityRef}
                 value={visibility}
                 onChange={(event) =>

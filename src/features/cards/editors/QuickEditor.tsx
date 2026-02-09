@@ -111,10 +111,6 @@ export function QuickEditor({
       coalesceMs?: number;
     },
   ) => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
 }) {
   const richTextBlocks = useMemo(
     () =>

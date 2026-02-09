@@ -68,9 +68,17 @@ export const reorder = mutation({
       .collect();
 
     const sectionSet = new Set(sections.map((s) => s._id));
-    for (const id of args.orderedSectionIds) {
+    const orderedSet = new Set(args.orderedSectionIds);
+    if (
+      orderedSet.size !== args.orderedSectionIds.length ||
+      orderedSet.size !== sectionSet.size
+    ) {
+      throw new Error("Invalid or incomplete section ordering");
+    }
+
+    for (const id of orderedSet) {
       if (!sectionSet.has(id)) {
-        throw new Error("Invalid section list");
+        throw new Error("Invalid or incomplete section ordering");
       }
     }
 

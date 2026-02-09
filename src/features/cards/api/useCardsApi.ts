@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/lib/convexApi";
+import { api, type Id } from "@/lib/convexApi";
 
-export function useCards(deckId: string | undefined) {
-  return useQuery(api.cards.listByDeck, deckId ? ({ deckId } as any) : "skip");
+export function useCards(deckId: string | Id<"decks"> | undefined) {
+  const typedDeckId = deckId as Id<"decks"> | undefined;
+  return useQuery(api.cards.listByDeck, typedDeckId ? { deckId: typedDeckId } : "skip");
 }
 
 export function useCreateCard() {
@@ -21,8 +22,9 @@ export function useRemoveCard() {
   return useMutation(api.cards.remove);
 }
 
-export function useCardSides(cardId: string | undefined) {
-  return useQuery(api.cardSides.listByCard, cardId ? ({ cardId } as any) : "skip");
+export function useCardSides(cardId: string | Id<"cards"> | undefined) {
+  const typedCardId = cardId as Id<"cards"> | undefined;
+  return useQuery(api.cardSides.listByCard, typedCardId ? { cardId: typedCardId } : "skip");
 }
 
 export function useSaveSide() {

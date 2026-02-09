@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActiveSelection, Canvas, FabricImage, Path, PencilBrush, Rect, util } from "fabric";
+import { ActiveSelection, Canvas, FabricImage, Path, PencilBrush, Rect, Textbox, util } from "fabric";
 import { AlignCenter, Eraser, ImagePlus, Link2, List, ListOrdered, Minus, MousePointer2, PenLine, Plus, Trash2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LexicalRichTextView } from "@/features/cards/components/LexicalRichTextView";
@@ -1909,6 +1909,11 @@ export function CreativeEditor({
   const addImage = () => {
     const url = window.prompt("Image URL");
     if (!url) return;
+    const safeUrl = normalizeHttpUrl(url);
+    if (!safeUrl) {
+      window.alert("Enter a valid URL.");
+      return;
+    }
 
     onApply(
       [
@@ -1917,7 +1922,7 @@ export function CreativeEditor({
           element: {
             id: `img-${Date.now()}`,
             type: "image",
-            url,
+            url: safeUrl,
             quick: { order: side.elements.length },
             creative: {
               x: 96,

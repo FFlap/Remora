@@ -1,8 +1,9 @@
 import { createClerkClient } from "@clerk/backend";
-import { clerk, setupClerkTestingToken } from "@clerk/testing/playwright";
+import { clerk, clerkSetup, setupClerkTestingToken } from "@clerk/testing/playwright";
 import type { Page } from "@playwright/test";
 
 const ensuredUsers = new Set<string>();
+let clerkTestingReady = false;
 
 const OWNER_EMAIL = process.env.E2E_OWNER_EMAIL ?? "remora.owner.e2e@example.com";
 
@@ -36,8 +37,12 @@ async function ensureClerkUser(emailAddress: string) {
 }
 
 export async function signInAsOwner(page: Page) {
-  await page.goto("/");
+  if (!clerkTestingReady) {
+    await clerkSetup();
+    clerkTestingReady = true;
+  }
   await setupClerkTestingToken({ page });
+  await page.goto("/");
   await ensureClerkUser(OWNER_EMAIL);
   await clerk.signIn({ page, emailAddress: OWNER_EMAIL });
   await page.goto("/app/decks");

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LexicalRichTextView } from "./LexicalRichTextView";
@@ -89,7 +89,7 @@ export function SideCardPreview({
   const ratio = quickLayout.cardRatio > 0 ? quickLayout.cardRatio : 1.6;
   const canvasWidth = Math.max(1, creativeLayout.width);
   const canvasHeight = Math.max(1, creativeLayout.height);
-  useLayoutEffect(() => {
+  useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
 
@@ -119,10 +119,8 @@ export function SideCardPreview({
     const rafId = window.requestAnimationFrame(updateScale);
     const observer = new ResizeObserver(updateScale);
     observer.observe(node);
-    window.addEventListener("resize", updateScale);
     return () => {
       window.cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", updateScale);
       observer.disconnect();
     };
   }, [canvasWidth, canvasHeight]);
@@ -179,7 +177,6 @@ export function SideCardPreview({
             )}
 
             {element.type === "image" && element.url && (
-              // eslint-disable-next-line jsx-a11y/alt-text
               <img
                 src={element.url}
                 className="h-full w-full object-cover"

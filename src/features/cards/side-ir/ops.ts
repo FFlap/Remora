@@ -23,6 +23,9 @@ export type AppliedOperation = {
 };
 
 export function cloneSideIR(side: SideIR): SideIR {
+  if (typeof structuredClone === "function") {
+    return structuredClone(side);
+  }
   return JSON.parse(JSON.stringify(side)) as SideIR;
 }
 

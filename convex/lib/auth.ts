@@ -52,7 +52,11 @@ export async function ensureCurrentUser(ctx: WriteCtx): Promise<Doc<"users">> {
         email,
         displayName,
       });
-      return { ...existing, email, displayName };
+      const updated = await ctx.db.get(existing._id);
+      if (!updated) {
+        throw new Error("Failed to fetch updated user");
+      }
+      return updated;
     }
     return existing;
   }
