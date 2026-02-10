@@ -1,11 +1,6 @@
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-  type useSensors,
-} from "@dnd-kit/core";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import { closestCenter, DndContext, type DragEndEvent, type useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { DeckSidebarSectionItem } from "@/features/decks/components/editor/sidebar/DeckSidebarSectionItem";
 import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
@@ -19,8 +14,12 @@ type DeckSidebarSectionsProps = {
   collapsedSections: Record<string, boolean>;
   sensors: ReturnType<typeof useSensors>;
   onSectionDragEnd: (event: DragEndEvent) => Promise<void>;
-  onCardDragEnd: (sectionId: Id<"sections">, cardIds: Id<"cards">[], event: DragEndEvent) => Promise<void>;
-  onSelectCard: (cardId: string) => void;
+  onCardDragEnd: (
+    sectionId: Id<"sections">,
+    cardIds: Id<"cards">[],
+    event: DragEndEvent,
+  ) => Promise<void>;
+  onSelectCard: (cardId: string) => void | Promise<void>;
   onSectionContextMenu: (event: ReactMouseEvent<HTMLElement>, sectionId: string) => void;
   onCardContextMenu: (
     event: ReactMouseEvent<HTMLElement>,

@@ -179,13 +179,21 @@ function renderTextNode(node: LexicalNode, key: string, scale: number) {
 }
 
 function renderParagraphNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+  const hasVisibleTextChild = Array.isArray(node.children)
+    ? node.children.some((child) => {
+        if (child.type === "linebreak") return true;
+        if (child.type === "text") return typeof child.text === "string" && child.text.length > 0;
+        return true;
+      })
+    : false;
+
   return (
     <p
       key={key}
       className="mb-[var(--lexical-block-spacing)] last:mb-0 leading-[1.35]"
       style={{ textAlign: paragraphAlign(node.format), fontSize: baseFontSizePx(scale) }}
     >
-      {children}
+      {hasVisibleTextChild ? children : <br />}
     </p>
   );
 }
@@ -204,12 +212,17 @@ function renderHeadingNode(node: LexicalNode, key: string, scale: number, childr
 }
 
 function renderListNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+  const listStyle: CSSProperties = {
+    fontSize: baseFontSizePx(scale),
+    textAlign: paragraphAlign(node.format),
+  };
+
   if (node.listType === "number") {
     return (
       <ol
         key={key}
-        className="mb-[var(--lexical-block-spacing)] list-decimal pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
-        style={{ fontSize: baseFontSizePx(scale) }}
+        className="mb-[var(--lexical-block-spacing)] list-decimal list-inside pl-[var(--lexical-list-indent)] leading-[1.35]"
+        style={listStyle}
       >
         {children}
       </ol>
@@ -219,8 +232,8 @@ function renderListNode(node: LexicalNode, key: string, scale: number, children:
   return (
     <ul
       key={key}
-      className="mb-[var(--lexical-block-spacing)] list-disc pl-[var(--lexical-list-indent)] text-left inline-block leading-[1.35]"
-      style={{ fontSize: baseFontSizePx(scale) }}
+      className="mb-[var(--lexical-block-spacing)] list-disc list-inside pl-[var(--lexical-list-indent)] leading-[1.35]"
+      style={listStyle}
     >
       {children}
     </ul>
@@ -263,7 +276,11 @@ function renderNode(node: LexicalNode, key: string, scale: number): ReactNode {
       return renderListNode(node, key, scale, children);
     case "listitem":
       return (
-        <li key={key} className="mb-[var(--lexical-list-item-spacing)] last:mb-0">
+        <li
+          key={key}
+          className="mb-[var(--lexical-list-item-spacing)] last:mb-0"
+          style={{ textAlign: paragraphAlign(node.format) }}
+        >
           {children}
         </li>
       );
@@ -328,6 +345,7 @@ export function LexicalRichTextView({
   const children = Array.isArray(root?.children) ? root.children : [];
   const hasText = lexicalHasRenderableText(lexical);
   const safeScale = asScale(scale);
+
   const previewStyle: CSSProperties & Record<string, string> = {
     "--lexical-block-spacing": `${Math.max(1, 8 * safeScale)}px`,
     "--lexical-list-indent": `${Math.max(1, 20 * safeScale)}px`,
@@ -338,8 +356,10 @@ export function LexicalRichTextView({
   return (
     <div
       className={cn(
-        "h-full w-full whitespace-pre-wrap break-words text-[#0f172a]",
-        scrollOnHover ? "remora-preview-scroll overflow-y-auto overflow-x-hidden" : "overflow-hidden",
+        "remora-richtext-frame remora-richtext-frame-centered h-full w-full whitespace-pre-wrap break-words text-[#0f172a]",
+        scrollOnHover
+          ? "remora-preview-scroll overflow-y-auto overflow-x-hidden"
+          : "overflow-hidden",
         className,
       )}
       data-testid={dataTestId}
@@ -358,13 +378,18 @@ export function LexicalRichTextView({
           : undefined
       }
     >
-      {hasText ? (
-        children.map((node, index) => renderNode(node, `node-${index}`, scale))
-      ) : (
-        <span className="text-[#64748b]" style={{ fontSize: `${Math.max(1, 16 * asScale(scale))}px` }}>
-          {placeholder}
-        </span>
-      )}
+      <div className={cn("remora-richtext-content", !hasText && "remora-richtext-content-empty")}>
+        {hasText ? (
+          children.map((node, index) => renderNode(node, `node-${index}`, scale))
+        ) : (
+          <span
+            className="text-[#64748b]"
+            style={{ fontSize: `${Math.max(1, 16 * asScale(scale))}px` }}
+          >
+            {placeholder}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

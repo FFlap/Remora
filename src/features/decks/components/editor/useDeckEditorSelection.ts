@@ -49,7 +49,7 @@ export function useDeckEditorSelection({
   const currentSideDoc = useMemo(() => {
     if (!selectedCardFromQuery || !selectedCardData) return null;
     const sortedSides = [...selectedCardData.sides].sort((a, b) => a.index - b.index);
-    return sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0] ?? null;
+    return sortedSides.find((side) => side.index === activeSideIndex) ?? null;
   }, [selectedCardFromQuery, selectedCardData, activeSideIndex]);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export function useDeckEditorSelection({
       section.cards.map((card) => String(card._id)),
     );
 
-    if (!selectedCardId || !allCardIds.includes(selectedCardId)) {
+    if (!selectedCardId) {
       const fallbackId = allCardIds[0];
       if (!fallbackId) return;
       setSelectedCardId(fallbackId);
@@ -67,8 +67,33 @@ export function useDeckEditorSelection({
         params: { deckId, cardId: fallbackId },
         replace: true,
       });
+      return;
     }
-  }, [data, selectedCardId, deckId, navigate, setSelectedCardId]);
+
+    if (allCardIds.includes(selectedCardId)) {
+      return;
+    }
+
+    if (selectedCardData === undefined) {
+      // Wait for card query to hydrate after create/move mutations.
+      return;
+    }
+
+    const selectedCardResolvedFromQuery =
+      selectedCardData && String(selectedCardData.card._id) === selectedCardId;
+    if (selectedCardResolvedFromQuery) {
+      return;
+    }
+
+    const fallbackId = allCardIds[0];
+    if (!fallbackId) return;
+    setSelectedCardId(fallbackId);
+    void navigate({
+      to: "/app/decks/$deckId/edit/card/$cardId",
+      params: { deckId, cardId: fallbackId },
+      replace: true,
+    });
+  }, [data, selectedCardId, deckId, navigate, setSelectedCardId, selectedCardData]);
 
   useEffect(() => {
     if (!preselectedCardId) return;

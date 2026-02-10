@@ -13,9 +13,17 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type WheelEvent as ReactWheelEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { LexicalRichTextView } from "@/features/cards/components/LexicalRichTextView";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
 import type { SideOperation } from "../side-ir/ops";
 import type { SideElement, SideIR, StrokePath } from "../side-ir/types";
 import {
@@ -37,13 +45,9 @@ import {
   DRAW_COLOR_SWATCHES,
   INSIGHT_SELECTION_COLOR,
   INSIGHT_SELECTION_FILL,
-  LEGACY_CREATIVE_HEIGHT,
-  LEGACY_CREATIVE_WIDTH,
   RICH_TEXT_MIN_HEIGHT,
   RICH_TEXT_MIN_WIDTH,
   TEXT_FORMAT_BITS,
-  UPSIZED_CREATIVE_HEIGHT,
-  UPSIZED_CREATIVE_WIDTH,
 } from "./creative/constants";
 import {
   createRichTextElement,
@@ -53,10 +57,8 @@ import {
   hasAnyTextFormatBit,
   hasRootListType,
   normalizeHttpUrl,
-  setBlockAlignmentOnAll,
   setLinkOnAllBlocks,
   setTextStylePropertyOnAll,
-  toggleListTypeOnRoot,
   toggleTextFormatBitOnAll,
 } from "./creative/lexical-utils";
 import type {
@@ -66,7 +68,7 @@ import type {
   OrderDirection,
   ToolMode,
 } from "./creative/types";
-import { LexicalRichTextEditor } from "./LexicalRichTextEditor";
+import { LexicalRichTextEditor, type LexicalRichTextEditorApi } from "./LexicalRichTextEditor";
 import { AlignmentDropdown } from "./lexical/alignment-controls";
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideIR updates.
@@ -87,6 +89,7 @@ export function CreativeEditor({
 }) {
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const stageViewportRef = useRef<HTMLDivElement | null>(null);
+  const richTextStaticLayerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<Canvas | null>(null);
   const hoveredStrokeRef = useRef<CanvasObject | null>(null);
   const skipNextCanvasHydrationRef = useRef(false);
@@ -95,6 +98,7 @@ export function CreativeEditor({
   const pendingSelectionElementIdsRef = useRef<string[] | null>(null);
   const suppressNextSelectionClearedRef = useRef(false);
   const suppressSelectionClearedUntilRef = useRef(0);
+  const inlineEditorApiRef = useRef<LexicalRichTextEditorApi | null>(null);
 
   const [tool, setTool] = useState<ToolMode>("select");
   const [strokeColor, setStrokeColor] = useState("#0f172a");
@@ -142,6 +146,32 @@ export function CreativeEditor({
   const closeContextMenu = () => {
     setContextMenu(null);
   };
+
+  const handleStaticRichTextWheel = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      if (editingRichTextId) return;
+      const staticLayer = richTextStaticLayerRef.current;
+      if (!staticLayer) return;
+
+      const views = staticLayer.querySelectorAll<HTMLElement>(".remora-preview-scroll");
+      if (views.length === 0) return;
+
+      const { clientX, clientY, deltaY } = event;
+      for (const view of Array.from(views)) {
+        const rect = view.getBoundingClientRect();
+        const withinX = clientX >= rect.left && clientX <= rect.right;
+        const withinY = clientY >= rect.top && clientY <= rect.bottom;
+        if (!withinX || !withinY) continue;
+        if (view.scrollHeight <= view.clientHeight + 1) continue;
+
+        view.scrollTop += deltaY;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    },
+    [editingRichTextId],
+  );
 
   const deleteElementById = (elementId: string) => {
     if (editingRichTextId === elementId) {
@@ -661,7 +691,61 @@ export function CreativeEditor({
       );
     };
 
-    // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Applies single and multi-selection transform persistence with bounded constraints.
+    const applyActiveSelectionSnapshotDelta = (
+      snapshot: ActiveSelectionSnapshot,
+      deltaX: number,
+      deltaY: number,
+      batchKeyPrefix: string,
+    ) => {
+      const updates: Record<string, CreativeTransform> = {};
+      const operations: Array<Extract<SideOperation, { kind: "transformElement" }>> = [];
+
+      for (const entry of snapshot.entries) {
+        const creative = clampCreativeTransform(
+          {
+            ...entry.creative,
+            x: entry.creative.x + deltaX,
+            y: entry.creative.y + deltaY,
+          },
+          cardWidth,
+          cardHeight,
+        );
+
+        if (entry.kind === "richText") {
+          updates[entry.elementId] = creative;
+        }
+
+        operations.push({
+          kind: "transformElement",
+          elementId: entry.elementId,
+          creative,
+        });
+      }
+
+      if (operations.length === 0) {
+        return false;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setLiveRichTextTransforms((current) => ({
+          ...current,
+          ...updates,
+        }));
+      }
+
+      setSelectedElementId(operations[0]?.elementId ?? null);
+      pendingSelectionElementIdsRef.current = operations.map((operation) => operation.elementId);
+      onApply(operations, {
+        source: "creative",
+        batchKey: `${batchKeyPrefix}-${operations
+          .map((operation) => operation.elementId)
+          .sort()
+          .join("-")}`,
+      });
+      suppressSelectionClearedUntilRef.current = Date.now() + 250;
+      return true;
+    };
+
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles constrained transforms for single objects and active selections.
     const onObjectModified = (event: unknown) => {
       const target = event?.target;
@@ -678,54 +762,21 @@ export function CreativeEditor({
 
         const deltaX = bounds.left - snapshot.bounds.left;
         const deltaY = bounds.top - snapshot.bounds.top;
-
-        const updates: Record<string, CreativeTransform> = {};
-        const operations: Array<Extract<SideOperation, { kind: "transformElement" }>> = [];
-
-        for (const entry of snapshot.entries) {
-          const creative = clampCreativeTransform(
-            {
-              ...entry.creative,
-              x: entry.creative.x + deltaX,
-              y: entry.creative.y + deltaY,
-            },
-            cardWidth,
-            cardHeight,
+        if (Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01) {
+          const applied = applyActiveSelectionSnapshotDelta(
+            snapshot,
+            deltaX,
+            deltaY,
+            "transform-selection",
           );
-
-          if (entry.kind === "richText") {
-            updates[entry.elementId] = creative;
+          if (applied) {
+            applyInsightSelectionStyle(target);
+            canvas.setActiveObject(target);
+            canvas.requestRenderAll();
           }
-
-          operations.push({
-            kind: "transformElement",
-            elementId: entry.elementId,
-            creative,
-          });
-        }
-
-        if (Object.keys(updates).length > 0) {
-          setLiveRichTextTransforms((current) => ({
-            ...current,
-            ...updates,
-          }));
-        }
-
-        if (operations.length > 0) {
-          setSelectedElementId(operations[0]?.elementId ?? null);
-          pendingSelectionElementIdsRef.current = operations.map(
-            (operation) => operation.elementId,
-          );
-          onApply(operations, {
-            source: "creative",
-            batchKey: `transform-selection-${operations
-              .map((operation) => operation.elementId)
-              .sort()
-              .join("-")}`,
-          });
+        } else {
           applyInsightSelectionStyle(target);
           canvas.setActiveObject(target);
-          suppressSelectionClearedUntilRef.current = Date.now() + 250;
           canvas.requestRenderAll();
         }
 
@@ -945,8 +996,12 @@ export function CreativeEditor({
             activeObject,
             side.elements,
           );
+          return;
         }
         const target = event?.target ?? null;
+        if (!target) {
+          suppressSelectionClearedUntilRef.current = 0;
+        }
         const selectedId = target?.data?.elementId;
         const selectedKind = target?.data?.kind;
         setSelectedElementId(typeof selectedId === "string" ? selectedId : null);
@@ -980,9 +1035,82 @@ export function CreativeEditor({
       });
     };
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Selection persistence must branch across active-selection, single-object, and rehydration edge cases.
+    const onMouseUp = () => {
+      if (tool !== "select") {
+        return;
+      }
+
+      const snapshot = activeSelectionSnapshotRef.current;
+      if (!snapshot) {
+        return;
+      }
+
+      const activeObject = canvas.getActiveObject();
+      if (isActiveSelectionTarget(activeObject)) {
+        const bounds = getObjectBounds(activeObject);
+        if (bounds) {
+          const deltaX = bounds.left - snapshot.bounds.left;
+          const deltaY = bounds.top - snapshot.bounds.top;
+          if (Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01) {
+            const applied = applyActiveSelectionSnapshotDelta(
+              snapshot,
+              deltaX,
+              deltaY,
+              "transform-selection",
+            );
+            if (applied) {
+              applyInsightSelectionStyle(activeObject);
+              canvas.setActiveObject(activeObject);
+              canvas.requestRenderAll();
+            }
+          }
+        }
+        activeSelectionSnapshotRef.current = null;
+        return;
+      }
+
+      const firstPersistedEntry = snapshot.entries.find((entry) => {
+        const matchingObject = canvas
+          .getObjects()
+          .find((object) => String((object as CanvasObject)?.data?.elementId) === entry.elementId);
+        return Boolean(matchingObject);
+      });
+      if (!firstPersistedEntry) {
+        activeSelectionSnapshotRef.current = null;
+        return;
+      }
+
+      const matchingObject = canvas
+        .getObjects()
+        .find(
+          (object) =>
+            String((object as CanvasObject)?.data?.elementId) === firstPersistedEntry.elementId,
+        ) as CanvasObject | undefined;
+      if (!matchingObject) {
+        activeSelectionSnapshotRef.current = null;
+        return;
+      }
+
+      const measured = elementTransformFromObject(matchingObject);
+      const deltaX = measured.x - firstPersistedEntry.creative.x;
+      const deltaY = measured.y - firstPersistedEntry.creative.y;
+      if (Math.abs(deltaX) > 0.01 || Math.abs(deltaY) > 0.01) {
+        applyActiveSelectionSnapshotDelta(snapshot, deltaX, deltaY, "transform-selection");
+      }
+      activeSelectionSnapshotRef.current = null;
+    };
+
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Preserves selection continuity across Fabric transient selection events.
     const onSelectionChanged = (event: unknown) => {
       if (isHydratingCanvasRef.current) return;
+      if (isActiveSelectionTarget(event?.target)) {
+        const snapshot = buildActiveSelectionSnapshot(event.target, side.elements);
+        if (snapshot) {
+          activeSelectionSnapshotRef.current = snapshot;
+        }
+      }
+
       let selectedTarget = event?.selected?.[0] ?? event?.target ?? null;
       if (
         (!selectedTarget?.data?.elementId || !selectedTarget?.data?.kind) &&
@@ -1031,7 +1159,7 @@ export function CreativeEditor({
         return;
       }
 
-      if (Date.now() < suppressSelectionClearedUntilRef.current) {
+      if (Date.now() < suppressSelectionClearedUntilRef.current && !event?.e) {
         const preservedId = selectedElementIdRef.current;
         if (preservedId) {
           const preservedObject = canvas
@@ -1058,6 +1186,52 @@ export function CreativeEditor({
         }
       }
 
+      const nativeTarget = event?.e?.target;
+      const isCanvasPointerEvent =
+        typeof Node !== "undefined" &&
+        nativeTarget instanceof Node &&
+        (canvas.upperCanvasEl?.contains(nativeTarget) ||
+          canvas.lowerCanvasEl?.contains(nativeTarget));
+
+      if ((!event?.e || !isCanvasPointerEvent) && editingRichTextId) {
+        if (side.elements.some((element) => element.id === editingRichTextId)) {
+          const editingObject = canvas
+            .getObjects()
+            .find(
+              (object) => String((object as CanvasObject)?.data?.elementId) === editingRichTextId,
+            );
+          if (editingObject) {
+            applyInsightSelectionStyle(editingObject);
+            canvas.setActiveObject(editingObject as CanvasObject);
+            setSelectedElementId(editingRichTextId);
+            canvas.requestRenderAll();
+          } else {
+            pendingSelectionElementIdsRef.current = [editingRichTextId];
+            setSelectedElementId(editingRichTextId);
+          }
+          return;
+        }
+      }
+
+      if (event?.e && !isCanvasPointerEvent) {
+        const preservedId = editingRichTextId ?? selectedElementIdRef.current;
+        if (preservedId && side.elements.some((element) => element.id === preservedId)) {
+          const preservedObject = canvas
+            .getObjects()
+            .find((object) => String((object as CanvasObject)?.data?.elementId) === preservedId);
+          if (preservedObject) {
+            applyInsightSelectionStyle(preservedObject);
+            canvas.setActiveObject(preservedObject as CanvasObject);
+            setSelectedElementId(preservedId);
+            if (editingRichTextId === preservedId) {
+              setEditingRichTextId(preservedId);
+            }
+            canvas.requestRenderAll();
+            return;
+          }
+        }
+      }
+
       // Fabric can emit transient clear events during drag/rehydration; preserve pending selection in those cases.
       const pendingSelectionIds = pendingSelectionElementIdsRef.current;
       if (activeSelectionSnapshotRef.current || (pendingSelectionIds?.length ?? 0) > 0) {
@@ -1065,21 +1239,6 @@ export function CreativeEditor({
           setSelectedElementId(pendingSelectionIds?.[0] ?? null);
         }
         return;
-      }
-
-      if (editingRichTextId && !event?.e) {
-        const editingObject = canvas
-          .getObjects()
-          .find(
-            (object) => String((object as CanvasObject)?.data?.elementId) === editingRichTextId,
-          );
-        if (editingObject) {
-          applyInsightSelectionStyle(editingObject);
-          canvas.setActiveObject(editingObject as CanvasObject);
-          setSelectedElementId(editingRichTextId);
-          canvas.requestRenderAll();
-          return;
-        }
       }
 
       if (!event?.e && selectedElementIdRef.current) {
@@ -1133,6 +1292,7 @@ export function CreativeEditor({
     canvas.on("object:rotating", onObjectTransforming);
     canvas.on("mouse:move", onMouseMove);
     canvas.on("mouse:down", onMouseDown);
+    canvas.on("mouse:up", onMouseUp);
     canvas.on("mouse:dblclick", onDoubleClick);
     canvas.on("selection:created", onSelectionChanged);
     canvas.on("selection:updated", onSelectionChanged);
@@ -1146,6 +1306,7 @@ export function CreativeEditor({
       canvas.off("object:rotating", onObjectTransforming);
       canvas.off("mouse:move", onMouseMove);
       canvas.off("mouse:down", onMouseDown);
+      canvas.off("mouse:up", onMouseUp);
       canvas.off("mouse:dblclick", onDoubleClick);
       canvas.off("selection:created", onSelectionChanged);
       canvas.off("selection:updated", onSelectionChanged);
@@ -1165,14 +1326,11 @@ export function CreativeEditor({
 
   const addText = () => {
     const next = createRichTextElement(String(Date.now()), side.elements.length);
-    const richTextCount = side.elements.filter((element) => element.type === "richText").length;
-    const staggerOffset = Math.min(64, richTextCount * 12);
-    const defaultY = 260 + richTextCount * 22;
-    next.creative = {
-      ...next.creative,
-      x: Math.min(Math.max(0, cardWidth - next.creative.width), 118 + staggerOffset),
-      y: Math.min(Math.max(0, cardHeight - next.creative.height), defaultY),
-    };
+    next.creative = clampCreativeTransform(
+      { ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS },
+      cardWidth,
+      cardHeight,
+    );
     setSelectedElementId(next.id);
     setEditingRichTextId(null);
     suppressSelectionClearedUntilRef.current = Date.now() + 350;
@@ -1281,6 +1439,10 @@ export function CreativeEditor({
     );
   };
 
+  const onInlineEditorApi = useCallback((api: LexicalRichTextEditorApi | null) => {
+    inlineEditorApiRef.current = api;
+  }, []);
+
   const applyLinkFromPrompt = () => {
     if (!selectedRichText) return;
     const defaultUrl = selectedLinkUrl ?? "https://";
@@ -1317,46 +1479,6 @@ export function CreativeEditor({
       },
     );
   };
-
-  useEffect(() => {
-    const isLegacySize =
-      Math.abs(cardWidth - LEGACY_CREATIVE_WIDTH) < 0.01 &&
-      Math.abs(cardHeight - LEGACY_CREATIVE_HEIGHT) < 0.01;
-    if (!isLegacySize) return;
-
-    const scaleX = UPSIZED_CREATIVE_WIDTH / Math.max(1, cardWidth);
-    const scaleY = UPSIZED_CREATIVE_HEIGHT / Math.max(1, cardHeight);
-
-    const transformOps: Array<Extract<SideOperation, { kind: "transformElement" }>> =
-      side.elements.map((element) => ({
-        kind: "transformElement",
-        elementId: element.id,
-        creative: {
-          x: element.creative.x * scaleX,
-          y: element.creative.y * scaleY,
-          width: Math.max(1, element.creative.width * scaleX),
-          height: Math.max(1, element.creative.height * scaleY),
-        },
-      }));
-
-    onApply(
-      [
-        ...transformOps,
-        {
-          kind: "setCreativeProjection",
-          creativeLayout: {
-            width: UPSIZED_CREATIVE_WIDTH,
-            height: UPSIZED_CREATIVE_HEIGHT,
-            padding: Math.max(1, side.layout.creativeLayout.padding * scaleX),
-          },
-        },
-      ],
-      {
-        source: "system",
-        batchKey: "creative-layout-upsize-legacy-672x448",
-      },
-    );
-  }, [cardWidth, cardHeight, onApply, side.elements, side.layout.creativeLayout.padding]);
 
   const resolveCreativeTransform = (element: RichTextBlock) =>
     liveRichTextTransforms[element.id] ?? element.creative;
@@ -1622,12 +1744,7 @@ export function CreativeEditor({
                 className="h-8 w-8"
                 title="Bullet List"
                 disabled={!canApplyTextStyle}
-                onClick={() =>
-                  applyRichTextUpdate(
-                    toggleListTypeOnRoot(selectedRichText.lexical, "bullet"),
-                    "list-bullet",
-                  )
-                }
+                onClick={() => inlineEditorApiRef.current?.toggleList("bullet")}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -1638,12 +1755,7 @@ export function CreativeEditor({
                 className="h-8 w-8"
                 title="Numbered List"
                 disabled={!canApplyTextStyle}
-                onClick={() =>
-                  applyRichTextUpdate(
-                    toggleListTypeOnRoot(selectedRichText.lexical, "number"),
-                    "list-number",
-                  )
-                }
+                onClick={() => inlineEditorApiRef.current?.toggleList("numbered")}
               >
                 <ListOrdered className="h-4 w-4" />
               </Button>
@@ -1691,12 +1803,7 @@ export function CreativeEditor({
                 value={selectedAlignment}
                 disabled={!canApplyTextStyle}
                 triggerClassName="h-8 w-8"
-                onChange={(next) =>
-                  applyRichTextUpdate(
-                    setBlockAlignmentOnAll(selectedRichText.lexical, next),
-                    `align-${next}`,
-                  )
-                }
+                onChange={(next) => inlineEditorApiRef.current?.applyAlignment(next)}
               />
 
               <label className="relative block h-8 w-8 overflow-hidden rounded border border-border">
@@ -1765,8 +1872,9 @@ export function CreativeEditor({
               style={{ backgroundColor: side.layout.creativeLayout.background }}
               data-testid="creative-card-shell"
             >
-              <div className="relative">
+              <div className="relative" onWheel={handleStaticRichTextWheel}>
                 <div
+                  ref={richTextStaticLayerRef}
                   className="pointer-events-none absolute inset-0 z-0"
                   data-testid="creative-richtext-static-layer"
                 >
@@ -1816,6 +1924,7 @@ export function CreativeEditor({
                         editorKey={`creative-${editingRichText.id}`}
                         value={editingRichText.lexical}
                         onImageInsert={addImage}
+                        onEditorApi={onInlineEditorApi}
                         onChange={(nextLexical) => {
                           pendingSelectionElementIdsRef.current = [editingRichText.id];
                           onApply(

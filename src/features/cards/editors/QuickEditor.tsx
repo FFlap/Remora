@@ -1,9 +1,10 @@
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { QuickEditorContent } from "./quick/QuickEditorContent";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
 import type { SideOperation } from "../side-ir/ops";
-import type { SideIR, SideElement, RichTextBlock } from "../side-ir/types";
-import { Plus } from "lucide-react";
+import type { RichTextBlock, SideElement, SideIR } from "../side-ir/types";
+import { QuickEditorContent } from "./quick/QuickEditorContent";
 
 function normalizeHttpUrl(url: string) {
   const trimmed = url.trim();
@@ -40,7 +41,7 @@ function createDefaultRichTextElement(seed: string): RichTextBlock {
               },
             ],
             direction: null,
-            format: "",
+            format: "center",
             indent: 0,
             type: "paragraph",
             version: 1,
@@ -57,11 +58,7 @@ function createDefaultRichTextElement(seed: string): RichTextBlock {
     },
     quick: { order: 0 },
     creative: {
-      x: 36,
-      y: 72,
-      width: 600,
-      height: 260,
-      rotation: 0,
+      ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
     },
   };
 }
@@ -119,7 +116,9 @@ export function QuickEditor({
         .sort((a, b) => (a.quick.order ?? 0) - (b.quick.order ?? 0)),
     [side.elements],
   );
-  const [activeRichTextId, setActiveRichTextId] = useState<string | null>(richTextBlocks[0]?.id ?? null);
+  const [activeRichTextId, setActiveRichTextId] = useState<string | null>(
+    richTextBlocks[0]?.id ?? null,
+  );
   const richText = useMemo(
     () => richTextBlocks.find((block) => block.id === activeRichTextId) ?? richTextBlocks[0],
     [richTextBlocks, activeRichTextId],
@@ -163,21 +162,18 @@ export function QuickEditor({
   };
 
   const handleBackgroundChange = (background: string) => {
-    onApply(
-      [{ kind: "setCreativeProjection", creativeLayout: { background } }],
-      { source: "quick", batchKey: "quick-card-background", coalesceMs: 150 },
-    );
+    onApply([{ kind: "setCreativeProjection", creativeLayout: { background } }], {
+      source: "quick",
+      batchKey: "quick-card-background",
+      coalesceMs: 150,
+    });
   };
 
   if (!richText) {
     return (
       <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
         <p className="text-sm text-zinc-700">This side does not have a text block yet.</p>
-        <Button
-          type="button"
-          className="mt-3"
-          onClick={handleAddTextBlock}
-        >
+        <Button type="button" className="mt-3" onClick={handleAddTextBlock}>
           <Plus className="h-4 w-4" /> Add text block
         </Button>
       </div>

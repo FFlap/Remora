@@ -78,7 +78,13 @@ export function QuickEditorContent({
           ) : (
             <div className="h-7" />
           )}
-          <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={onAddTextBlock}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={onAddTextBlock}
+          >
             <Plus className="h-4 w-4" />
             Add text box
           </Button>
@@ -145,7 +151,9 @@ export function QuickEditorContent({
 
         {mediaElements.length > 0 ? (
           <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Media Blocks</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Media Blocks
+            </p>
             {mediaElements.map((element) => (
               <Input
                 key={element.id}
@@ -166,7 +174,9 @@ export function QuickEditorContent({
                     },
                   )
                 }
-                placeholder={element.type === "image" ? "https://image-url..." : "https://youtube-url..."}
+                placeholder={
+                  element.type === "image" ? "https://image-url..." : "https://youtube-url..."
+                }
               />
             ))}
           </div>
@@ -174,7 +184,9 @@ export function QuickEditorContent({
       </div>
 
       <div className="quick-editor-preview-panel rounded-xl border border-border bg-background p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Live Preview</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Live Preview
+        </p>
         <div className="quick-editor-preview-stage flex items-center justify-center">
           <SideCardPreview
             side={side}

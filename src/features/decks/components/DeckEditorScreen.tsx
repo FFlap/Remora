@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   useAddSide,
@@ -59,12 +59,31 @@ export function DeckEditorScreen({
     setSelectedCardId,
     selectedCardData,
   });
+  const selectedCardDataForWorkspace =
+    selectedCardData &&
+    selectedCard &&
+    String(selectedCardData.card._id) === String(selectedCard._id)
+      ? selectedCardData
+      : undefined;
 
   const sideHistory = useSideHistory(
     currentSideDoc ? asSideIR(currentSideDoc.sideIR) : createDefaultSideIR(),
   );
   const lastLoadedSideKeyRef = useRef<string | null>(null);
   const resetSideHistoryRef = useRef(sideHistory.reset);
+  const getShellSideForCard = useCallback(
+    (cardId: string | undefined) => {
+      if (!cardId) {
+        return createDefaultSideIR();
+      }
+
+      const shellCard = data?.sections
+        .flatMap((section) => section.cards)
+        .find((card) => String(card._id) === cardId);
+      return shellCard?.frontSide ? asSideIR(shellCard.frontSide.sideIR) : createDefaultSideIR();
+    },
+    [data],
+  );
 
   useEffect(() => {
     resetSideHistoryRef.current = sideHistory.reset;
@@ -88,25 +107,21 @@ export function DeckEditorScreen({
 
     if (!selectedCardId) {
       setActivePreviewCardId(undefined);
+      resetSideHistoryRef.current(createDefaultSideIR());
       return;
     }
 
     setActiveSideIndex(0);
-    const shellCard = data?.sections
-      .flatMap((section) => section.cards)
-      .find((card) => String(card._id) === selectedCardId);
-    if (shellCard?.frontSide) {
-      resetSideHistoryRef.current(asSideIR(shellCard.frontSide.sideIR));
-    } else {
-      resetSideHistoryRef.current(createDefaultSideIR());
-    }
+    resetSideHistoryRef.current(getShellSideForCard(selectedCardId));
     setActivePreviewCardId(selectedCardId);
-  }, [data, selectedCardId, setActiveSideIndex]);
+  }, [getShellSideForCard, selectedCardId, setActiveSideIndex]);
 
   useEffect(() => {
     if (!currentSideDoc) {
       lastLoadedSideKeyRef.current = null;
-      setActivePreviewCardId(undefined);
+      if (!selectedCardId) {
+        setActivePreviewCardId(undefined);
+      }
       return;
     }
 
@@ -148,7 +163,9 @@ export function DeckEditorScreen({
     return <div className="p-6 text-sm text-muted-foreground">Loading deck...</div>;
   }
 
-  const sortedSides = [...(selectedCardData?.sides ?? [])].sort((a, b) => a.index - b.index);
+  const sortedSides = [...(selectedCardDataForWorkspace?.sides ?? [])].sort(
+    (a, b) => a.index - b.index,
+  );
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -176,7 +193,11 @@ export function DeckEditorScreen({
           selectedCardId={selectedCardId}
           activeSidePreview={sideHistory.present}
           activePreviewCardId={activePreviewCardId}
+          onBeforeSelectCard={autosave.flush}
           onSelectCard={(cardId) => {
+            lastLoadedSideKeyRef.current = null;
+            resetSideHistoryRef.current(getShellSideForCard(cardId));
+            setActivePreviewCardId(cardId);
             setSelectedCardId(cardId);
           }}
           onResetActiveSideIndex={() => setActiveSideIndex(0)}
@@ -184,7 +205,7 @@ export function DeckEditorScreen({
 
         <DeckEditorWorkspace
           selectedCard={selectedCard}
-          selectedCardData={selectedCardData}
+          selectedCardData={selectedCardDataForWorkspace}
           sideHistory={sideHistory}
           editorMode={editorMode}
           setEditorMode={setEditorMode}
@@ -205,6 +226,9 @@ export function DeckEditorScreen({
             if (!selectedCard) return;
             await autosave.flush();
             await addSide({ cardId: selectedCard._id });
+            lastLoadedSideKeyRef.current = null;
+            resetSideHistoryRef.current(createDefaultSideIR(String(sortedSides.length + 1)));
+            setActivePreviewCardId(selectedCardId);
             setActiveSideIndex(sortedSides.length);
           }}
           onDeleteSide={async () => {

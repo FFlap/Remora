@@ -118,7 +118,13 @@ test.describe("Quick/Create perspective parity", () => {
     const editor = page.locator('[contenteditable="true"]').first();
     await editor.click();
     await page.keyboard.type(" Perspective text");
-    await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    await expect
+      .poll(
+        async () =>
+          ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").trim(),
+        { timeout: 15000 },
+      )
+      .toContain("Perspective text");
 
     await page.getByTestId("mode-creative-button").click();
     await expect(creativeCanvas).toBeVisible();

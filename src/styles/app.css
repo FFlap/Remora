@@ -104,7 +104,9 @@
     font-family: var(--font-sans);
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 }
 
@@ -132,13 +134,40 @@
 }
 
 .remora-preview-scroll {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
-.remora-preview-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+.remora-richtext-frame {
+  min-width: 0;
+  min-height: 0;
+}
+
+.remora-richtext-frame-centered {
+  display: flex;
+  flex-direction: column;
+}
+
+.remora-richtext-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.remora-richtext-frame-centered .remora-richtext-content {
+  margin-block: auto;
+}
+
+.remora-richtext-frame-centered .remora-richtext-content > * {
+  width: 100%;
+}
+
+.remora-richtext-content-empty {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .deck-editor-shell-grid {
@@ -335,7 +364,10 @@
   border: 0;
   padding: 0;
   cursor: pointer;
-  transition: transform 120ms ease, background-color 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
 }
 
 .deck-viewer-side-dot.is-active {
@@ -359,7 +391,9 @@
 }
 
 .landing-soft-shadow {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04), 0 5px 15px rgba(0, 0, 0, 0.02);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.04),
+    0 5px 15px rgba(0, 0, 0, 0.02);
 }
 
 .landing-floating-element {

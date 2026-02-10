@@ -1,5 +1,10 @@
 import { AutoLinkNode, LinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
+import {
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+  ListItemNode,
+  ListNode,
+} from "@lexical/list";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -13,11 +18,29 @@ import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { $getSelectionStyleValueForProperty } from "@lexical/selection";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import { $getSelection, $isRangeSelection, type EditorState } from "lexical";
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
+import {
+  $getSelection,
+  $isRangeSelection,
+  type EditorState,
+  FORMAT_ELEMENT_COMMAND,
+} from "lexical";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type WheelEvent,
+} from "react";
 import { cn } from "@/lib/utils";
 import { Toolbar } from "./lexical/Toolbar";
-import type { FormatState } from "./lexical/types";
+import type { FormatState, TextAlignment } from "./lexical/types";
+
+export type LexicalRichTextEditorApi = {
+  applyAlignment: (alignment: TextAlignment) => void;
+  toggleList: (listType: "bullet" | "numbered") => void;
+};
 
 function normalizeSelectionAlignment(value: string | null | undefined): FormatState["alignment"] {
   if (value === "center" || value === "right" || value === "justify") {
@@ -99,6 +122,36 @@ function SyncExternalStatePlugin({
   return null;
 }
 
+function EditorApiPlugin({
+  onEditorApi,
+}: {
+  onEditorApi?: (api: LexicalRichTextEditorApi | null) => void;
+}) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (!onEditorApi) return;
+
+    onEditorApi({
+      applyAlignment: (alignment) => {
+        editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, alignment);
+      },
+      toggleList: (listType) => {
+        editor.dispatchCommand(
+          listType === "numbered" ? INSERT_ORDERED_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND,
+          undefined,
+        );
+      },
+    });
+
+    return () => {
+      onEditorApi(null);
+    };
+  }, [editor, onEditorApi]);
+
+  return null;
+}
+
 function scrollOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
   const host = event.currentTarget;
   const editable = host.querySelector('[contenteditable="true"]') as HTMLElement | null;
@@ -113,7 +166,52 @@ function scrollOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
   event.stopPropagation();
 }
 
-function createInitialConfig(editorKey: string, serializedValue: string) {
+function createInitialConfig(editorKey: string, serializedValue: string, isInline: boolean) {
+  const inlineTheme = {
+    paragraph: "mb-[var(--lexical-block-spacing)] last:mb-0 leading-[1.35]",
+    heading: {
+      h1: "mb-[var(--lexical-block-spacing)] text-[28px] font-semibold leading-tight",
+      h2: "mb-[var(--lexical-block-spacing)] text-[24px] font-semibold leading-tight",
+      h3: "mb-[var(--lexical-block-spacing)] text-[20px] font-semibold leading-tight",
+    },
+    list: {
+      ul: "mb-[var(--lexical-block-spacing)] list-disc list-inside pl-[var(--lexical-list-indent)] leading-[1.35]",
+      ol: "mb-[var(--lexical-block-spacing)] list-decimal list-inside pl-[var(--lexical-list-indent)] leading-[1.35]",
+      listitem: "mb-[var(--lexical-list-item-spacing)] last:mb-0",
+    },
+    text: {
+      bold: "font-bold",
+      italic: "italic",
+      underline: "underline",
+      strikethrough: "line-through",
+    },
+    quote:
+      "mb-[var(--lexical-block-spacing)] border-l-2 border-zinc-300 pl-[var(--lexical-quote-indent)] italic text-zinc-600 last:mb-0",
+    link: "text-blue-600 underline",
+  };
+
+  const panelTheme = {
+    paragraph: "mb-2 last:mb-0 leading-[1.35]",
+    heading: {
+      h1: "text-[1.5em] font-bold mb-[0.5em]",
+      h2: "text-[1.25em] font-semibold mb-[0.5em]",
+      h3: "text-[1.1em] font-medium mb-[0.5em]",
+    },
+    list: {
+      ul: "list-disc list-inside mb-[0.5em] pl-[1.25em]",
+      ol: "list-decimal list-inside mb-[0.5em] pl-[1.25em]",
+      listitem: "mb-[0.25em]",
+    },
+    text: {
+      bold: "font-bold",
+      italic: "italic",
+      underline: "underline",
+      strikethrough: "line-through",
+    },
+    quote: "border-l-4 border-border pl-[1em] italic text-muted-foreground",
+    link: "text-blue-600 underline hover:text-blue-800 cursor-pointer",
+  };
+
   return {
     namespace: `remora-quick-${editorKey}`,
     editorState: serializedValue,
@@ -131,37 +229,17 @@ function createInitialConfig(editorKey: string, serializedValue: string) {
       TableCellNode,
       TableRowNode,
     ],
-    theme: {
-      paragraph: "mb-2 last:mb-0 leading-[1.35]",
-      heading: {
-        h1: "text-[1.5em] font-bold mb-[0.5em]",
-        h2: "text-[1.25em] font-semibold mb-[0.5em]",
-        h3: "text-[1.1em] font-medium mb-[0.5em]",
-      },
-      list: {
-        ul: "list-disc mb-[0.5em] pl-[1.25em] text-left inline-block",
-        ol: "list-decimal mb-[0.5em] pl-[1.25em] text-left inline-block",
-        listitem: "mb-[0.25em]",
-      },
-      text: {
-        bold: "font-bold",
-        italic: "italic",
-        underline: "underline",
-        strikethrough: "line-through",
-      },
-      quote: "border-l-4 border-border pl-[1em] italic text-muted-foreground",
-      link: "text-blue-600 underline hover:text-blue-800 cursor-pointer",
-    },
+    theme: isInline ? inlineTheme : panelTheme,
   };
 }
 
 function getEditableClassName(isInline: boolean, isPanelScrollable: boolean) {
   if (isInline) {
-    return "h-full min-h-0 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words p-0 leading-[1.35]";
+    return "my-auto w-full min-h-0 whitespace-pre-wrap break-words p-0 leading-[1.35]";
   }
 
   if (isPanelScrollable) {
-    return "h-[360px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words p-4 text-base leading-[1.45]";
+    return "h-[clamp(400px,52vh,520px)] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words p-4 text-base leading-[1.45]";
   }
 
   return "min-h-[230px] p-4 text-base leading-[1.45]";
@@ -173,6 +251,7 @@ export function LexicalRichTextEditor({
   onChange,
   onImageInsert,
   onYouTubeInsert,
+  onEditorApi,
   variant = "panel",
   showToolbar = true,
   showTableButton = true,
@@ -185,6 +264,7 @@ export function LexicalRichTextEditor({
   onChange: (nextValue: unknown) => void;
   onImageInsert?: () => void;
   onYouTubeInsert?: () => void;
+  onEditorApi?: (api: LexicalRichTextEditorApi | null) => void;
   variant?: "panel" | "inline";
   showToolbar?: boolean;
   showTableButton?: boolean;
@@ -194,6 +274,7 @@ export function LexicalRichTextEditor({
 }) {
   const serializedValue = useMemo(() => JSON.stringify(value), [value]);
   const lastLocalChangeRef = useRef(serializedValue);
+  const contentEditableRef = useRef<HTMLDivElement | null>(null);
   const isInline = variant === "inline";
   const isPanelScrollable = !isInline && panelScrollable;
   const editableClassName = getEditableClassName(isInline, isPanelScrollable);
@@ -207,8 +288,8 @@ export function LexicalRichTextEditor({
   });
 
   const initialConfig = useMemo(
-    () => createInitialConfig(editorKey, serializedValue),
-    [editorKey, serializedValue],
+    () => createInitialConfig(editorKey, serializedValue, isInline),
+    [editorKey, isInline, serializedValue],
   );
 
   const handleChange = useCallback(
@@ -219,6 +300,17 @@ export function LexicalRichTextEditor({
     },
     [onChange],
   );
+
+  const placeholderPositionClassName = isInline
+    ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center leading-[1.35]"
+    : "left-4 top-4";
+  const placeholderColorClassName = isInline ? "text-[#64748b]" : "text-muted-foreground";
+  const lexicalStyleVars: CSSProperties & Record<string, string> = {
+    "--lexical-block-spacing": "8px",
+    "--lexical-list-indent": "20px",
+    "--lexical-list-item-spacing": "4px",
+    "--lexical-quote-indent": "12px",
+  };
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
@@ -239,22 +331,33 @@ export function LexicalRichTextEditor({
           />
         ) : null}
         <div
-          className={cn("relative", isInline ? "min-h-0 flex-1 overflow-auto" : "")}
-          style={isInline || isPanelScrollable ? { scrollbarGutter: "stable" } : undefined}
+          className={cn(
+            "relative",
+            isInline
+              ? "remora-lexical-inline-scroll-host remora-preview-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
+              : "",
+          )}
+          style={lexicalStyleVars}
           onWheel={scrollOnHoverWheel}
         >
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className={cn("text-foreground outline-none", editableClassName)}
+                ref={contentEditableRef}
+                className={cn(
+                  "remora-lexical-content outline-none",
+                  isInline ? "text-[#0f172a]" : "text-foreground",
+                  editableClassName,
+                )}
                 style={isInline || isPanelScrollable ? { scrollbarGutter: "stable" } : undefined}
               />
             }
             placeholder={
               <div
                 className={cn(
-                  "pointer-events-none absolute text-sm text-muted-foreground",
-                  isInline ? "left-0 top-0 leading-[1.35]" : "left-4 top-4",
+                  "pointer-events-none absolute text-sm",
+                  placeholderColorClassName,
+                  placeholderPositionClassName,
                 )}
               >
                 {placeholder}
@@ -268,6 +371,7 @@ export function LexicalRichTextEditor({
           <TablePlugin />
           <OnChangePlugin onChange={handleChange} />
           <FormatStatePlugin onFormatChange={setFormatState} />
+          <EditorApiPlugin onEditorApi={onEditorApi} />
           <SyncExternalStatePlugin
             serializedValue={serializedValue}
             lastLocalChangeRef={lastLocalChangeRef}

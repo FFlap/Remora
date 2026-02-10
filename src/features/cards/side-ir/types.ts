@@ -100,7 +100,7 @@ export function createDefaultSideIR(seed = "1"): SideIR {
                   },
                 ],
                 direction: null,
-                format: "",
+                format: "center",
                 indent: 0,
                 type: "paragraph",
                 version: 1,
@@ -137,31 +137,24 @@ function normalizeLayout(layout: unknown): SideIR["layout"] {
   const raw = (layout ?? {}) as {
     quickLayout?: Partial<QuickLayout>;
     creativeLayout?: Partial<CreativeLayout>;
-    quick?: { template?: "single-column" | "split" };
-    creative?: { width?: number; height?: number; background?: string };
   };
-
-  const legacyRatio = raw.quick?.template === "split" ? 1.45 : DEFAULT_QUICK_LAYOUT.cardRatio;
-  const legacyBackground =
-    typeof raw.creativeLayout?.background === "string"
-      ? raw.creativeLayout.background
-      : undefined;
-  const background =
-    legacyBackground ??
-    (typeof raw.creative?.background === "string"
-      ? raw.creative.background
-      : DEFAULT_CREATIVE_LAYOUT.background);
 
   const quickLayout: QuickLayout = {
     mode: "centered",
-    cardRatio: asPositiveNumber(raw.quickLayout?.cardRatio, legacyRatio),
-    previewScale: asPositiveNumber(raw.quickLayout?.previewScale, DEFAULT_QUICK_LAYOUT.previewScale),
+    cardRatio: asPositiveNumber(raw.quickLayout?.cardRatio, DEFAULT_QUICK_LAYOUT.cardRatio),
+    previewScale: asPositiveNumber(
+      raw.quickLayout?.previewScale,
+      DEFAULT_QUICK_LAYOUT.previewScale,
+    ),
   };
 
   const creativeLayout: CreativeLayout = {
-    width: asPositiveNumber(raw.creativeLayout?.width ?? raw.creative?.width, DEFAULT_CREATIVE_LAYOUT.width),
-    height: asPositiveNumber(raw.creativeLayout?.height ?? raw.creative?.height, DEFAULT_CREATIVE_LAYOUT.height),
-    background,
+    width: asPositiveNumber(raw.creativeLayout?.width, DEFAULT_CREATIVE_LAYOUT.width),
+    height: asPositiveNumber(raw.creativeLayout?.height, DEFAULT_CREATIVE_LAYOUT.height),
+    background:
+      typeof raw.creativeLayout?.background === "string"
+        ? raw.creativeLayout.background
+        : DEFAULT_CREATIVE_LAYOUT.background,
     fixedViewport: true,
     padding: asPositiveNumber(raw.creativeLayout?.padding, DEFAULT_CREATIVE_LAYOUT.padding),
   };

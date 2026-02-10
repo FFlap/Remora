@@ -3,12 +3,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useCreateCard,
   useMoveCardToSection,
-  useReorderCardsInSection,
   useRemoveCard,
+  useReorderCardsInSection,
 } from "@/features/cards/api/useCardsApi";
-import {
-  DeckSidebarContextMenu,
-} from "@/features/decks/components/editor/sidebar/DeckSidebarContextMenu";
+import type { SideIR } from "@/features/cards/side-ir/types";
+import { DeckSidebarContextMenu } from "@/features/decks/components/editor/sidebar/DeckSidebarContextMenu";
 import { DeckSidebarHeader } from "@/features/decks/components/editor/sidebar/DeckSidebarHeader";
 import { DeckSidebarSections } from "@/features/decks/components/editor/sidebar/DeckSidebarSections";
 import { useDeckSidebarCardActions } from "@/features/decks/components/editor/sidebar/useDeckSidebarCardActions";
@@ -25,7 +24,6 @@ import {
   useReorderSections,
 } from "@/features/sections/api/useSectionsApi";
 import type { Id } from "@/lib/convexApi";
-import type { SideIR } from "@/features/cards/side-ir/types";
 
 type DeckEditorSidebarProps = {
   deckId: string;
@@ -33,7 +31,8 @@ type DeckEditorSidebarProps = {
   selectedCardId?: string;
   activeSidePreview: SideIR;
   activePreviewCardId?: string;
-  onSelectCard: (cardId: string | undefined) => void;
+  onBeforeSelectCard?: () => Promise<void>;
+  onSelectCard: (cardId: string | undefined) => void | Promise<void>;
   onResetActiveSideIndex: () => void;
 };
 
@@ -43,6 +42,7 @@ export function DeckEditorSidebar({
   selectedCardId,
   activeSidePreview,
   activePreviewCardId,
+  onBeforeSelectCard,
   onSelectCard,
   onResetActiveSideIndex,
 }: DeckEditorSidebarProps) {
@@ -66,6 +66,7 @@ export function DeckEditorSidebar({
     useSidebarContextMenu();
   const { selectCard, clearSelection } = useDeckSidebarNavigation({
     deckId,
+    onBeforeSelectCard,
     onSelectCard,
     onResetActiveSideIndex,
   });

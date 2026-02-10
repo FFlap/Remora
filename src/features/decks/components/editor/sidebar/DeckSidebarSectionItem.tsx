@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
 import type { DragEndEvent, useSensors } from "@dnd-kit/core";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
 import { DeckSidebarCardList } from "@/features/decks/components/editor/sidebar/DeckSidebarCardList";
+import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
 import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
 
@@ -15,8 +15,12 @@ type DeckSidebarSectionItemProps = {
   activePreviewCardId?: string;
   sensors: ReturnType<typeof useSensors>;
   onToggleCollapsed: (sectionId: string) => void;
-  onSelectCard: (cardId: string) => void;
-  onCardDragEnd: (sectionId: Id<"sections">, cardIds: Id<"cards">[], event: DragEndEvent) => Promise<void>;
+  onSelectCard: (cardId: string) => void | Promise<void>;
+  onCardDragEnd: (
+    sectionId: Id<"sections">,
+    cardIds: Id<"cards">[],
+    event: DragEndEvent,
+  ) => Promise<void>;
   onSectionContextMenu: (event: ReactMouseEvent<HTMLElement>, sectionId: string) => void;
   onCardContextMenu: (
     event: ReactMouseEvent<HTMLElement>,
@@ -52,8 +56,14 @@ export function DeckSidebarSectionItem({
           onClick={() => onToggleCollapsed(sectionId)}
         >
           <span className="flex items-center gap-1">
-            {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            <span className="flex-1 truncate text-xs font-semibold tracking-wide">{section.title}</span>
+            {isCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+            <span className="flex-1 truncate text-xs font-semibold tracking-wide">
+              {section.title}
+            </span>
             {isActiveSection ? (
               <span className="rounded bg-black px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">
                 active

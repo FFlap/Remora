@@ -28,7 +28,7 @@ export function useDeckSidebarCardActions({
   reorderCards: ReturnType<typeof useReorderCardsInSection>;
   moveCardToSection: ReturnType<typeof useMoveCardToSection>;
   removeCard: ReturnType<typeof useRemoveCard>;
-  selectCard: (cardId: string) => void;
+  selectCard: (cardId: string) => void | Promise<void>;
   clearSelection: () => void;
   closeContextMenu: () => void;
 }) {
@@ -54,7 +54,7 @@ export function useDeckSidebarCardActions({
           }
         }
 
-        selectCard(String(newCardId));
+        await selectCard(String(newCardId));
         toast.success("Card created");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to create card");

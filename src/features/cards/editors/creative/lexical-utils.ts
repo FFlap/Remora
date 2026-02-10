@@ -1,4 +1,5 @@
 import type { RichTextBlock } from "@/features/cards/side-ir/types";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../../shared/sideIRDefaults";
 
 type BlockAlignment = "left" | "center" | "right" | "justify";
 
@@ -36,7 +37,7 @@ export function createDefaultLexicalState() {
             },
           ],
           direction: null,
-          format: "",
+          format: "center",
           indent: 0,
           type: "paragraph",
           version: 1,
@@ -59,13 +60,7 @@ export function createRichTextElement(seed: string, order: number): RichTextBloc
     type: "richText",
     lexical: createDefaultLexicalState(),
     quick: { order },
-    creative: {
-      x: 84,
-      y: 96,
-      width: 460,
-      height: 180,
-      rotation: 0,
-    },
+    creative: { ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS },
   };
 }
 
@@ -209,6 +204,7 @@ export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "num
   const clone = cloneLexicalState(lexical);
   const rootChildren = clone.root?.children;
   if (!Array.isArray(rootChildren) || rootChildren.length === 0) return clone;
+  const inheritedAlignment = getBlockAlignment(clone);
 
   if (rootChildren.length === 1 && rootChildren[0]?.type === "list") {
     const existing = rootChildren[0];
@@ -220,7 +216,19 @@ export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "num
             Array.isArray(child.children) &&
             child.children.length > 0
           ) {
-            return child.children[0];
+            const firstChild = child.children[0] as LexicalTextNode | undefined;
+            if (!firstChild || typeof firstChild !== "object") return null;
+            if (
+              firstChild.type === "paragraph" ||
+              firstChild.type === "heading" ||
+              firstChild.type === "quote"
+            ) {
+              return {
+                ...firstChild,
+                format: normalizeBlockAlignment(firstChild.format ?? child.format),
+              };
+            }
+            return firstChild;
           }
           return null;
         })
@@ -236,6 +244,25 @@ export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "num
       ...existing,
       listType,
       tag: listType === "number" ? "ol" : "ul",
+      format: normalizeBlockAlignment(existing.format),
+      children: (existing.children ?? []).map((child) => {
+        if (!child || child.type !== "listitem") return child;
+        const align = normalizeBlockAlignment(child.format ?? existing.format);
+        return {
+          ...child,
+          format: align,
+          children: (child.children ?? []).map((grandChild) => {
+            if (
+              grandChild?.type === "paragraph" ||
+              grandChild?.type === "heading" ||
+              grandChild?.type === "quote"
+            ) {
+              return { ...grandChild, format: align };
+            }
+            return grandChild;
+          }),
+        };
+      }),
     };
     clone.root = {
       ...clone.root,
@@ -248,10 +275,16 @@ export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "num
     type: "list",
     listType,
     tag: listType === "number" ? "ol" : "ul",
+    format: inheritedAlignment,
     children: rootChildren.map((node, index) => ({
       type: "listitem",
       value: index + 1,
-      children: [node],
+      format: inheritedAlignment,
+      children: [
+        node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote"
+          ? { ...node, format: inheritedAlignment }
+          : node,
+      ],
     })),
   };
 
@@ -286,7 +319,13 @@ export function getBlockAlignment(lexical: unknown): BlockAlignment {
     if (!Array.isArray(nodes) || detected) return;
     for (const node of nodes) {
       if (detected) break;
-      if (node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote") {
+      if (
+        node?.type === "paragraph" ||
+        node?.type === "heading" ||
+        node?.type === "quote" ||
+        node?.type === "list" ||
+        node?.type === "listitem"
+      ) {
         detected = normalizeBlockAlignment(node.format);
       }
       visit(node?.children);
@@ -301,7 +340,13 @@ export function setBlockAlignmentOnAll(lexical: unknown, align: BlockAlignment) 
   const visit = (nodes: LexicalTextNode[] | undefined) => {
     if (!Array.isArray(nodes)) return;
     for (const node of nodes) {
-      if (node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote") {
+      if (
+        node?.type === "paragraph" ||
+        node?.type === "heading" ||
+        node?.type === "quote" ||
+        node?.type === "list" ||
+        node?.type === "listitem"
+      ) {
         node.format = align;
       }
       visit(node?.children);

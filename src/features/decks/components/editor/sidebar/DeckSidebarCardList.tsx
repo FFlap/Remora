@@ -1,11 +1,6 @@
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-  type useSensors,
-} from "@dnd-kit/core";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import { closestCenter, DndContext, type DragEndEvent, type useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import { asSideIR, type SideIR } from "@/features/cards/side-ir/types";
 import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
@@ -20,8 +15,12 @@ type DeckSidebarCardListProps = {
   activeSidePreview: SideIR;
   activePreviewCardId?: string;
   sensors: ReturnType<typeof useSensors>;
-  onCardDragEnd: (sectionId: Id<"sections">, cardIds: Id<"cards">[], event: DragEndEvent) => Promise<void>;
-  onSelectCard: (cardId: string) => void;
+  onCardDragEnd: (
+    sectionId: Id<"sections">,
+    cardIds: Id<"cards">[],
+    event: DragEndEvent,
+  ) => Promise<void>;
+  onSelectCard: (cardId: string) => void | Promise<void>;
   onCardContextMenu: (
     event: ReactMouseEvent<HTMLElement>,
     sectionId: string,
@@ -65,7 +64,9 @@ export function DeckSidebarCardList({
                   type="button"
                   data-testid={`card-sidebar-preview-${card._id}`}
                   onContextMenu={(event) => onCardContextMenu(event, sectionId, cardId, index)}
-                  onClick={() => onSelectCard(cardId)}
+                  onClick={() => {
+                    void onSelectCard(cardId);
+                  }}
                   className={cn(
                     "relative w-full rounded-lg p-1 text-left transition-all",
                     isActive ? "opacity-100" : "opacity-80 hover:opacity-100",

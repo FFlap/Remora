@@ -28,7 +28,7 @@ export function useDeckSidebarSectionActions({
   createCard: ReturnType<typeof useCreateCard>;
   renameSection: ReturnType<typeof useRenameSection>;
   removeSection: ReturnType<typeof useRemoveSection>;
-  selectCard: (cardId: string) => void;
+  selectCard: (cardId: string) => void | Promise<void>;
   clearSelection: () => void;
   closeContextMenu: () => void;
 }) {
@@ -42,7 +42,7 @@ export function useDeckSidebarSectionActions({
         deckId: deckId as Id<"decks">,
         sectionId,
       });
-      selectCard(String(cardId));
+      void selectCard(String(cardId));
       toast.success("Section created");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create section");

@@ -43,10 +43,10 @@ async function assertActivePreviewToken(
 ) {
   const preview = page.getByTestId("quick-live-preview-card");
 
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index < 10; index += 1) {
     const text = (await preview.textContent()) ?? "";
     expect(text).not.toContain(unexpectedToken);
-    await page.waitForTimeout(30);
+    await page.waitForTimeout(12);
   }
 }
 

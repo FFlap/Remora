@@ -203,6 +203,13 @@ export function Toolbar({
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, safe);
   }, [editor]);
 
+  const applyBlockAlignment = useCallback(
+    (alignment: "left" | "center" | "right" | "justify") => {
+      editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, alignment);
+    },
+    [editor],
+  );
+
   return (
     <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border bg-muted/50 p-1.5">
       <button
@@ -259,7 +266,7 @@ export function Toolbar({
 
       <AlignmentDropdown
         value={alignmentValue}
-        onChange={(next) => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, next)}
+        onChange={applyBlockAlignment}
         triggerClassName={iconButtonClass}
       />
       <div className="mx-1 h-6 w-px bg-border" />

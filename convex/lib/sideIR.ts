@@ -71,7 +71,7 @@ export function createDefaultSideIR(seed = "1"): SideIR {
                   },
                 ],
                 direction: null,
-                format: "",
+                format: "center",
                 indent: 0,
                 type: "paragraph",
                 version: 1,

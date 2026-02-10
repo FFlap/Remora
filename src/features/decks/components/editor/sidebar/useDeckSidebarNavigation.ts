@@ -3,29 +3,38 @@ import { useCallback } from "react";
 
 export function useDeckSidebarNavigation({
   deckId,
+  onBeforeSelectCard,
   onSelectCard,
   onResetActiveSideIndex,
 }: {
   deckId: string;
-  onSelectCard: (cardId: string | undefined) => void;
+  onBeforeSelectCard?: () => Promise<void>;
+  onSelectCard: (cardId: string | undefined) => void | Promise<void>;
   onResetActiveSideIndex: () => void;
 }) {
   const navigate = useNavigate();
 
   const selectCard = useCallback(
-    (cardId: string) => {
+    async (cardId: string) => {
+      if (onBeforeSelectCard) {
+        try {
+          await onBeforeSelectCard();
+        } catch {
+          // Ignore autosave flush failures here and still allow navigation.
+        }
+      }
       onResetActiveSideIndex();
-      onSelectCard(cardId);
-      void navigate({
+      await onSelectCard(cardId);
+      await navigate({
         to: "/app/decks/$deckId/edit/card/$cardId",
         params: { deckId, cardId },
       });
     },
-    [deckId, navigate, onResetActiveSideIndex, onSelectCard],
+    [deckId, navigate, onBeforeSelectCard, onResetActiveSideIndex, onSelectCard],
   );
 
   const clearSelection = useCallback(() => {
-    onSelectCard(undefined);
+    void onSelectCard(undefined);
     onResetActiveSideIndex();
     void navigate({
       to: "/app/decks/$deckId/edit",

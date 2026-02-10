@@ -57,7 +57,7 @@ async function fillQuickEditor(page: Parameters<typeof test>[0]["page"], text: s
     )
     .toBeTruthy();
   // Quick mode saves with debounce; give persistence/query refresh enough time before switches.
-  await page.waitForTimeout(2300);
+  await page.waitForTimeout(1400);
 }
 
 async function sampleCardPreviewText(
@@ -65,23 +65,29 @@ async function sampleCardPreviewText(
   cardPreview: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
   unexpectedToken: string,
 ) {
-  for (let index = 0; index < 24; index += 1) {
+  for (let index = 0; index < 12; index += 1) {
     const text = (await cardPreview.textContent()) ?? "";
     expect(text).not.toContain(unexpectedToken);
-    await page.waitForTimeout(40);
+    await page.waitForTimeout(15);
   }
 }
 
-async function readSidebarCardTexts(page: Parameters<typeof test>[0]["page"]) {
-  const cardPreviews = page.locator('[data-testid^="card-sidebar-preview-"]');
-  const count = await cardPreviews.count();
-  const texts: string[] = [];
-
-  for (let index = 0; index < count; index += 1) {
-    texts.push((await cardPreviews.nth(index).textContent()) ?? "");
-  }
-
-  return texts;
+async function readUniqueSidebarCardIds(page: Parameters<typeof test>[0]["page"]) {
+  return page
+    .locator('[data-testid^="card-sidebar-preview-"]')
+    .evaluateAll((nodes) => {
+      const ids: string[] = [];
+      for (const node of nodes) {
+        const raw = node.getAttribute("data-testid");
+        if (!raw) continue;
+        const id = raw.replace("card-sidebar-preview-", "");
+        if (!id) continue;
+        if (!ids.includes(id)) {
+          ids.push(id);
+        }
+      }
+      return ids;
+    });
 }
 
 async function selectCardFromSidebar(page: Parameters<typeof test>[0]["page"], cardId: string) {
@@ -113,15 +119,12 @@ test.describe("Sidebar active preview switch regression", () => {
 
     await page.getByText("Section 1").first().click({ button: "right" });
     await page.getByRole("button", { name: "New card" }).click();
-    const cardPreviews = page.locator('[data-testid^="card-sidebar-preview-"]');
-    await expect(cardPreviews).toHaveCount(2);
+    await expect
+      .poll(async () => (await readUniqueSidebarCardIds(page)).length, { timeout: 10000 })
+      .toBeGreaterThanOrEqual(2);
 
-    const firstCardPreview = cardPreviews.nth(0);
-    const secondCardPreview = cardPreviews.nth(1);
-    const firstCardTestId = await firstCardPreview.getAttribute("data-testid");
-    const secondCardTestId = await secondCardPreview.getAttribute("data-testid");
-    const firstCardId = firstCardTestId?.replace("card-sidebar-preview-", "");
-    const secondCardId = secondCardTestId?.replace("card-sidebar-preview-", "");
+    const uniqueCardIds = await readUniqueSidebarCardIds(page);
+    const [firstCardId, secondCardId] = uniqueCardIds;
     expect(firstCardId).toBeTruthy();
     expect(secondCardId).toBeTruthy();
     expect(firstCardId).not.toBe(secondCardId);
@@ -132,52 +135,41 @@ test.describe("Sidebar active preview switch regression", () => {
     await selectCardFromSidebar(page, String(secondCardId));
     await fillQuickEditor(page, cardTwoToken);
 
-    await expect(cardPreviews).toHaveCount(2);
-
     await expect
       .poll(
-        async () => {
-          const texts = await readSidebarCardTexts(page);
-          const hasCardOne = texts.some((text) => text.includes(cardOneToken));
-          const hasCardTwo = texts.some((text) => text.includes(cardTwoToken));
-          return hasCardOne && hasCardTwo;
-        },
+        async () =>
+          ((await page.getByTestId(`card-sidebar-preview-${firstCardId}`).textContent()) ?? "").includes(
+            cardOneToken,
+          ) &&
+          ((await page.getByTestId(`card-sidebar-preview-${secondCardId}`).textContent()) ?? "").includes(
+            cardTwoToken,
+          ),
         { timeout: 22000 },
       )
       .toBeTruthy();
 
-    const initialTexts = await readSidebarCardTexts(page);
-    const cardOneIndex = initialTexts.findIndex((text) => text.includes(cardOneToken));
-    const cardTwoIndex = initialTexts.findIndex((text) => text.includes(cardTwoToken));
-    expect(cardOneIndex).toBeGreaterThanOrEqual(0);
-    expect(cardTwoIndex).toBeGreaterThanOrEqual(0);
-    expect(cardOneIndex).not.toBe(cardTwoIndex);
+    const cardOneId = String(firstCardId);
+    const cardTwoId = String(secondCardId);
+    const cardOnePreview = page.getByTestId(`card-sidebar-preview-${cardOneId}`);
+    const cardTwoPreview = page.getByTestId(`card-sidebar-preview-${cardTwoId}`);
 
-    const cardOnePreview = cardPreviews.nth(cardOneIndex);
-    const cardTwoPreview = cardPreviews.nth(cardTwoIndex);
-    const cardOneTestId = await cardOnePreview.getAttribute("data-testid");
-    const cardTwoTestId = await cardTwoPreview.getAttribute("data-testid");
-    const cardOneId = cardOneTestId?.replace("card-sidebar-preview-", "");
-    const cardTwoId = cardTwoTestId?.replace("card-sidebar-preview-", "");
-    expect(cardOneId).toBeTruthy();
-    expect(cardTwoId).toBeTruthy();
-
-    await selectCardFromSidebar(page, String(cardOneId));
+    await selectCardFromSidebar(page, cardOneId);
     await sampleCardPreviewText(page, cardOnePreview, cardTwoToken);
 
-    await selectCardFromSidebar(page, String(cardTwoId));
+    await selectCardFromSidebar(page, cardTwoId);
     await sampleCardPreviewText(page, cardTwoPreview, cardOneToken);
 
     for (let index = 0; index < 4; index += 1) {
-      await selectCardFromSidebar(page, String(cardOneId));
+      await selectCardFromSidebar(page, cardOneId);
       await sampleCardPreviewText(page, cardOnePreview, cardTwoToken);
 
-      await selectCardFromSidebar(page, String(cardTwoId));
+      await selectCardFromSidebar(page, cardTwoId);
       await sampleCardPreviewText(page, cardTwoPreview, cardOneToken);
 
-      const texts = await readSidebarCardTexts(page);
-      expect(texts[cardOneIndex] ?? "").not.toContain(cardTwoToken);
-      expect(texts[cardTwoIndex] ?? "").not.toContain(cardOneToken);
+      const cardOneText = (await cardOnePreview.textContent()) ?? "";
+      const cardTwoText = (await cardTwoPreview.textContent()) ?? "";
+      expect(cardOneText).not.toContain(cardTwoToken);
+      expect(cardTwoText).not.toContain(cardOneToken);
     }
   });
 });

@@ -51,6 +51,10 @@ export function AlignmentDropdown({
             "inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40",
             triggerClassName,
           )}
+          onMouseDown={(event) => {
+            if (disabled) return;
+            event.preventDefault();
+          }}
           title="Text alignment"
           aria-label="Text alignment"
         >
