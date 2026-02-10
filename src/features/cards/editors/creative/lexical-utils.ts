@@ -1,5 +1,7 @@
 import type { RichTextBlock } from "@/features/cards/side-ir/types";
 
+type BlockAlignment = "left" | "center" | "right" | "justify";
+
 export type LexicalTextNode = {
   type?: string;
   text?: string;
@@ -75,7 +77,10 @@ function cloneLexicalState(value: unknown): LexicalRootState {
   }
 }
 
-function walkTextNodes(nodes: LexicalTextNode[] | undefined, visitor: (node: LexicalTextNode) => void) {
+function walkTextNodes(
+  nodes: LexicalTextNode[] | undefined,
+  visitor: (node: LexicalTextNode) => void,
+) {
   if (!Array.isArray(nodes)) return;
   for (const node of nodes) {
     if (node?.type === "text") {
@@ -210,7 +215,11 @@ export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "num
     if (existing.listType === listType) {
       const unwrapped = (existing.children ?? [])
         .map((child) => {
-          if (child?.type === "listitem" && Array.isArray(child.children) && child.children.length > 0) {
+          if (
+            child?.type === "listitem" &&
+            Array.isArray(child.children) &&
+            child.children.length > 0
+          ) {
             return child.children[0];
           }
           return null;
@@ -263,7 +272,31 @@ export function hasRootListType(lexical: unknown, listType: "bullet" | "number")
   );
 }
 
-export function setBlockAlignmentOnAll(lexical: unknown, align: "left" | "center" | "right" | "justify") {
+function normalizeBlockAlignment(value: unknown): BlockAlignment {
+  if (value === "center" || value === "right" || value === "justify") {
+    return value;
+  }
+  return "left";
+}
+
+export function getBlockAlignment(lexical: unknown): BlockAlignment {
+  const clone = cloneLexicalState(lexical);
+  let detected: BlockAlignment | null = null;
+  const visit = (nodes: LexicalTextNode[] | undefined) => {
+    if (!Array.isArray(nodes) || detected) return;
+    for (const node of nodes) {
+      if (detected) break;
+      if (node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote") {
+        detected = normalizeBlockAlignment(node.format);
+      }
+      visit(node?.children);
+    }
+  };
+  visit(clone.root?.children);
+  return detected ?? "left";
+}
+
+export function setBlockAlignmentOnAll(lexical: unknown, align: BlockAlignment) {
   const clone = cloneLexicalState(lexical);
   const visit = (nodes: LexicalTextNode[] | undefined) => {
     if (!Array.isArray(nodes)) return;
@@ -276,26 +309,6 @@ export function setBlockAlignmentOnAll(lexical: unknown, align: "left" | "center
   };
   visit(clone.root?.children);
   return clone;
-}
-
-export function isCenterAligned(lexical: unknown) {
-  const clone = cloneLexicalState(lexical);
-  let hasBlocks = false;
-  let allCentered = true;
-  const visit = (nodes: LexicalTextNode[] | undefined) => {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      if (node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote") {
-        hasBlocks = true;
-        if (node.format !== "center") {
-          allCentered = false;
-        }
-      }
-      visit(node?.children);
-    }
-  };
-  visit(clone.root?.children);
-  return hasBlocks && allCentered;
 }
 
 export function setLinkOnAllBlocks(lexical: unknown, url: string | null) {
@@ -320,7 +333,12 @@ export function setLinkOnAllBlocks(lexical: unknown, url: string | null) {
     return nodes.map((node) => {
       if (!node) return node;
       const nextChildren = Array.isArray(node.children) ? wrapBlocks(node.children) : node.children;
-      if (node.type === "paragraph" || node.type === "heading" || node.type === "quote" || node.type === "listitem") {
+      if (
+        node.type === "paragraph" ||
+        node.type === "heading" ||
+        node.type === "quote" ||
+        node.type === "listitem"
+      ) {
         const blockChildren = stripLinks(nextChildren);
         if (!url || blockChildren.length === 0) {
           return {

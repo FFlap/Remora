@@ -1,16 +1,6 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: Pending staged extraction of Fabric event/hydration systems into dedicated hooks.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ActiveSelection, Canvas, FabricImage, Path, PencilBrush, Rect, Textbox } from "fabric";
 import {
-  ActiveSelection,
-  Canvas,
-  FabricImage,
-  Path,
-  PencilBrush,
-  Rect,
-  Textbox,
-} from "fabric";
-import {
-  AlignCenter,
   Eraser,
   ImagePlus,
   Link2,
@@ -23,11 +13,11 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LexicalRichTextView } from "@/features/cards/components/LexicalRichTextView";
-import { LexicalRichTextEditor } from "./LexicalRichTextEditor";
 import type { SideOperation } from "../side-ir/ops";
-import type { SideIR, SideElement, StrokePath } from "../side-ir/types";
+import type { SideElement, SideIR, StrokePath } from "../side-ir/types";
 import {
   applyInsightSelectionStyle,
   buildActiveSelectionSnapshot,
@@ -44,20 +34,6 @@ import {
   strokeFromFabricPath,
 } from "./creative/canvas-utils";
 import {
-  createRichTextElement,
-  getFirstLinkUrl,
-  getFirstTextStyleProperty,
-  hasAnyTextFormatBit,
-  hasRootListType,
-  isCenterAligned,
-  normalizeHttpUrl,
-  setBlockAlignmentOnAll,
-  setLinkOnAllBlocks,
-  setTextStylePropertyOnAll,
-  toggleListTypeOnRoot,
-  toggleTextFormatBitOnAll,
-} from "./creative/lexical-utils";
-import {
   DRAW_COLOR_SWATCHES,
   INSIGHT_SELECTION_COLOR,
   INSIGHT_SELECTION_FILL,
@@ -69,6 +45,20 @@ import {
   UPSIZED_CREATIVE_HEIGHT,
   UPSIZED_CREATIVE_WIDTH,
 } from "./creative/constants";
+import {
+  createRichTextElement,
+  getBlockAlignment,
+  getFirstLinkUrl,
+  getFirstTextStyleProperty,
+  hasAnyTextFormatBit,
+  hasRootListType,
+  normalizeHttpUrl,
+  setBlockAlignmentOnAll,
+  setLinkOnAllBlocks,
+  setTextStylePropertyOnAll,
+  toggleListTypeOnRoot,
+  toggleTextFormatBitOnAll,
+} from "./creative/lexical-utils";
 import type {
   ActiveSelectionSnapshot,
   CanvasObject,
@@ -76,6 +66,8 @@ import type {
   OrderDirection,
   ToolMode,
 } from "./creative/types";
+import { LexicalRichTextEditor } from "./LexicalRichTextEditor";
+import { AlignmentDropdown } from "./lexical/alignment-controls";
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideIR updates.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Creative editor interaction flow is intentionally cohesive until hook extraction is complete.
@@ -142,7 +134,8 @@ export function CreativeEditor({
   const editingRichText = useMemo(
     () =>
       side.elements.find(
-        (element): element is RichTextBlock => element.id === editingRichTextId && element.type === "richText",
+        (element): element is RichTextBlock =>
+          element.id === editingRichTextId && element.type === "richText",
       ) ?? null,
     [editingRichTextId, side.elements],
   );
@@ -244,26 +237,30 @@ export function CreativeEditor({
     canvas.clear();
     canvas.backgroundColor = "rgba(0, 0, 0, 0)";
 
+    // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Hydration addElement intentionally centralizes element-type creation for deterministic canvas rebuild.
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles each supported creative element type during hydration.
     const addElement = async (element: SideElement) => {
       if (element.type === "stroke") {
         const normalized = normalizeStrokeForFabric(element);
-        const path = new Path(element.svgPath?.trim() ? element.svgPath : pointsToPath(normalized.points), {
-          stroke: element.style.color,
-          strokeWidth: element.style.width,
-          fill: "",
-          selectable: true,
-          evented: true,
-          perPixelTargetFind: false,
-          objectCaching: false,
-          left: normalized.left,
-          top: normalized.top,
-          angle: element.creative.rotation,
-          strokeLineCap: "round",
-          strokeLineJoin: "round",
-          originX: "left",
-          originY: "top",
-        });
+        const path = new Path(
+          element.svgPath?.trim() ? element.svgPath : pointsToPath(normalized.points),
+          {
+            stroke: element.style.color,
+            strokeWidth: element.style.width,
+            fill: "",
+            selectable: true,
+            evented: true,
+            perPixelTargetFind: false,
+            objectCaching: false,
+            left: normalized.left,
+            top: normalized.top,
+            angle: element.creative.rotation,
+            strokeLineCap: "round",
+            strokeLineJoin: "round",
+            originX: "left",
+            originY: "top",
+          },
+        );
 
         path.set({
           scaleX: Math.max(0.01, element.creative.width / normalized.baseWidth),
@@ -477,7 +474,10 @@ export function CreativeEditor({
           .map((element) => element.id),
       );
       let changed = false;
-      const next: Record<string, { x: number; y: number; width: number; height: number; rotation: number }> = {};
+      const next: Record<
+        string,
+        { x: number; y: number; width: number; height: number; rotation: number }
+      > = {};
       for (const [key, value] of Object.entries(current)) {
         if (existingIds.has(key)) {
           next[key] = value;
@@ -595,9 +595,7 @@ export function CreativeEditor({
         }
 
         const bounds =
-          typeof object.getBoundingRect === "function"
-            ? object.getBoundingRect(true, true)
-            : null;
+          typeof object.getBoundingRect === "function" ? object.getBoundingRect(true, true) : null;
         if (!bounds) continue;
 
         const strokeTolerance = Math.max(
@@ -715,7 +713,9 @@ export function CreativeEditor({
 
         if (operations.length > 0) {
           setSelectedElementId(operations[0]?.elementId ?? null);
-          pendingSelectionElementIdsRef.current = operations.map((operation) => operation.elementId);
+          pendingSelectionElementIdsRef.current = operations.map(
+            (operation) => operation.elementId,
+          );
           onApply(operations, {
             source: "creative",
             batchKey: `transform-selection-${operations
@@ -941,7 +941,10 @@ export function CreativeEditor({
       if (tool === "select") {
         const activeObject = canvas.getActiveObject();
         if (isActiveSelectionTarget(activeObject)) {
-          activeSelectionSnapshotRef.current = buildActiveSelectionSnapshot(activeObject, side.elements);
+          activeSelectionSnapshotRef.current = buildActiveSelectionSnapshot(
+            activeObject,
+            side.elements,
+          );
         }
         const target = event?.target ?? null;
         const selectedId = target?.data?.elementId;
@@ -981,7 +984,10 @@ export function CreativeEditor({
     const onSelectionChanged = (event: unknown) => {
       if (isHydratingCanvasRef.current) return;
       let selectedTarget = event?.selected?.[0] ?? event?.target ?? null;
-      if ((!selectedTarget?.data?.elementId || !selectedTarget?.data?.kind) && isActiveSelectionTarget(event?.target)) {
+      if (
+        (!selectedTarget?.data?.elementId || !selectedTarget?.data?.kind) &&
+        isActiveSelectionTarget(event?.target)
+      ) {
         const objects = (event.target.getObjects?.() ?? []) as CanvasObject[];
         const firstObjectWithData = objects.find((object) => object?.data?.elementId);
         if (firstObjectWithData) {
@@ -1005,7 +1011,11 @@ export function CreativeEditor({
       setSelectedElementId(typeof selectedId === "string" ? selectedId : null);
       if (selectedKind !== "richText") {
         setEditingRichTextId(null);
-      } else if (typeof selectedId === "string" && editingRichTextId && editingRichTextId !== selectedId) {
+      } else if (
+        typeof selectedId === "string" &&
+        editingRichTextId &&
+        editingRichTextId !== selectedId
+      ) {
         setEditingRichTextId(null);
       }
     };
@@ -1060,7 +1070,9 @@ export function CreativeEditor({
       if (editingRichTextId && !event?.e) {
         const editingObject = canvas
           .getObjects()
-          .find((object) => String((object as CanvasObject)?.data?.elementId) === editingRichTextId);
+          .find(
+            (object) => String((object as CanvasObject)?.data?.elementId) === editingRichTextId,
+          );
         if (editingObject) {
           applyInsightSelectionStyle(editingObject);
           canvas.setActiveObject(editingObject as CanvasObject);
@@ -1073,7 +1085,10 @@ export function CreativeEditor({
       if (!event?.e && selectedElementIdRef.current) {
         const selectedObject = canvas
           .getObjects()
-          .find((object) => String((object as CanvasObject)?.data?.elementId) === selectedElementIdRef.current);
+          .find(
+            (object) =>
+              String((object as CanvasObject)?.data?.elementId) === selectedElementIdRef.current,
+          );
         if (selectedObject) {
           applyInsightSelectionStyle(selectedObject);
           canvas.setActiveObject(selectedObject as CanvasObject);
@@ -1086,7 +1101,10 @@ export function CreativeEditor({
       activeSelectionSnapshotRef.current = null;
       pendingSelectionElementIdsRef.current = null;
       const fallbackSelectedId = selectedElementIdRef.current;
-      if (fallbackSelectedId && side.elements.some((element) => element.id === fallbackSelectedId)) {
+      if (
+        fallbackSelectedId &&
+        side.elements.some((element) => element.id === fallbackSelectedId)
+      ) {
         setSelectedElementId(fallbackSelectedId);
         setEditingRichTextId(null);
         return;
@@ -1134,7 +1152,16 @@ export function CreativeEditor({
       canvas.off("selection:cleared", onSelectionCleared);
       clearHover();
     };
-  }, [tool, onApply, side.elements, strokeColor, strokeWidth, editingRichTextId, cardWidth, cardHeight]);
+  }, [
+    tool,
+    onApply,
+    side.elements,
+    strokeColor,
+    strokeWidth,
+    editingRichTextId,
+    cardWidth,
+    cardHeight,
+  ]);
 
   const addText = () => {
     const next = createRichTextElement(String(Date.now()), side.elements.length);
@@ -1195,13 +1222,15 @@ export function CreativeEditor({
   };
 
   const selectedTextColor = selectedRichText
-    ? getFirstTextStyleProperty(selectedRichText.lexical, "color") ?? "#0f172a"
+    ? (getFirstTextStyleProperty(selectedRichText.lexical, "color") ?? "#0f172a")
     : "#0f172a";
   const fontSizeOptions = ["12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
   const selectedFontSize = selectedRichText
-    ? getFirstTextStyleProperty(selectedRichText.lexical, "font-size") ?? "16px"
+    ? (getFirstTextStyleProperty(selectedRichText.lexical, "font-size") ?? "16px")
     : "16px";
-  const selectedFontSizeValue = fontSizeOptions.includes(selectedFontSize) ? selectedFontSize : "16px";
+  const selectedFontSizeValue = fontSizeOptions.includes(selectedFontSize)
+    ? selectedFontSize
+    : "16px";
   const selectedIsBold = selectedRichText
     ? hasAnyTextFormatBit(selectedRichText.lexical, TEXT_FORMAT_BITS.bold)
     : false;
@@ -1214,9 +1243,13 @@ export function CreativeEditor({
   const selectedIsStrikethrough = selectedRichText
     ? hasAnyTextFormatBit(selectedRichText.lexical, TEXT_FORMAT_BITS.strikethrough)
     : false;
-  const selectedHasBulletList = selectedRichText ? hasRootListType(selectedRichText.lexical, "bullet") : false;
-  const selectedHasNumberedList = selectedRichText ? hasRootListType(selectedRichText.lexical, "number") : false;
-  const selectedIsCentered = selectedRichText ? isCenterAligned(selectedRichText.lexical) : false;
+  const selectedHasBulletList = selectedRichText
+    ? hasRootListType(selectedRichText.lexical, "bullet")
+    : false;
+  const selectedHasNumberedList = selectedRichText
+    ? hasRootListType(selectedRichText.lexical, "number")
+    : false;
+  const selectedAlignment = selectedRichText ? getBlockAlignment(selectedRichText.lexical) : "left";
   const selectedLinkUrl = selectedRichText ? getFirstLinkUrl(selectedRichText.lexical) : null;
   const canApplyTextStyle = Boolean(selectedRichText) && editingRichTextId === selectedRichText.id;
   const strokeElements = useMemo(
@@ -1225,7 +1258,9 @@ export function CreativeEditor({
   );
   const hasStrokes = strokeElements.length > 0;
   const normalizedStrokeColor = strokeColor.toLowerCase();
-  const isPresetStrokeColor = DRAW_COLOR_SWATCHES.some((color) => color.toLowerCase() === normalizedStrokeColor);
+  const isPresetStrokeColor = DRAW_COLOR_SWATCHES.some(
+    (color) => color.toLowerCase() === normalizedStrokeColor,
+  );
 
   const applyRichTextUpdate = (nextLexical: unknown, suffix: string) => {
     if (!selectedRichText) return;
@@ -1292,16 +1327,17 @@ export function CreativeEditor({
     const scaleX = UPSIZED_CREATIVE_WIDTH / Math.max(1, cardWidth);
     const scaleY = UPSIZED_CREATIVE_HEIGHT / Math.max(1, cardHeight);
 
-    const transformOps: Array<Extract<SideOperation, { kind: "transformElement" }>> = side.elements.map((element) => ({
-      kind: "transformElement",
-      elementId: element.id,
-      creative: {
-        x: element.creative.x * scaleX,
-        y: element.creative.y * scaleY,
-        width: Math.max(1, element.creative.width * scaleX),
-        height: Math.max(1, element.creative.height * scaleY),
-      },
-    }));
+    const transformOps: Array<Extract<SideOperation, { kind: "transformElement" }>> =
+      side.elements.map((element) => ({
+        kind: "transformElement",
+        elementId: element.id,
+        creative: {
+          x: element.creative.x * scaleX,
+          y: element.creative.y * scaleY,
+          width: Math.max(1, element.creative.width * scaleX),
+          height: Math.max(1, element.creative.height * scaleY),
+        },
+      }));
 
     onApply(
       [
@@ -1406,7 +1442,6 @@ export function CreativeEditor({
           >
             <ImagePlus className="h-4 w-4" />
           </Button>
-
         </div>
       </div>
 
@@ -1459,7 +1494,9 @@ export function CreativeEditor({
                     aria-label={`Set draw color ${color}`}
                     className={[
                       "h-7 w-7 rounded-full border transition-all",
-                      isActive ? "border-foreground ring-1 ring-foreground/20" : "border-border hover:border-foreground/60",
+                      isActive
+                        ? "border-foreground ring-1 ring-foreground/20"
+                        : "border-border hover:border-foreground/60",
                     ].join(" ")}
                     style={{ backgroundColor: color }}
                     onClick={() => setStrokeColor(color)}
@@ -1469,7 +1506,9 @@ export function CreativeEditor({
               <label
                 className={[
                   "relative block h-7 w-7 overflow-hidden rounded-full border transition-all",
-                  !isPresetStrokeColor ? "border-foreground ring-1 ring-foreground/20" : "border-border hover:border-foreground/60",
+                  !isPresetStrokeColor
+                    ? "border-foreground ring-1 ring-foreground/20"
+                    : "border-border hover:border-foreground/60",
                 ].join(" ")}
                 title="Custom stroke color"
               >
@@ -1506,155 +1545,185 @@ export function CreativeEditor({
         {tool === "select" && selectedRichText ? (
           <div className="flex justify-center" data-testid="creative-richtext-toolbar-row">
             <div className="flex w-full max-w-2xl flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/50 p-2">
-            <Button
-              type="button"
-              variant={selectedIsBold ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Bold"
-              disabled={!canApplyTextStyle}
-              onClick={() => applyRichTextUpdate(toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.bold), "bold")}
-            >
-              <span className="text-sm font-semibold">B</span>
-            </Button>
-            <Button
-              type="button"
-              variant={selectedIsItalic ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Italic"
-              disabled={!canApplyTextStyle}
-              onClick={() =>
-                applyRichTextUpdate(toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.italic), "italic")
-              }
-            >
-              <span className="text-sm italic">I</span>
-            </Button>
-            <Button
-              type="button"
-              variant={selectedIsUnderline ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Underline"
-              disabled={!canApplyTextStyle}
-              onClick={() =>
-                applyRichTextUpdate(toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.underline), "underline")
-              }
-            >
-              <span className="text-sm underline">U</span>
-            </Button>
-            <Button
-              type="button"
-              variant={selectedIsStrikethrough ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Strikethrough"
-              disabled={!canApplyTextStyle}
-              onClick={() =>
-                applyRichTextUpdate(
-                  toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.strikethrough),
-                  "strikethrough",
-                )
-              }
-            >
-              <span className="text-sm line-through">S</span>
-            </Button>
+              <Button
+                type="button"
+                variant={selectedIsBold ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Bold"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.bold),
+                    "bold",
+                  )
+                }
+              >
+                <span className="text-sm font-semibold">B</span>
+              </Button>
+              <Button
+                type="button"
+                variant={selectedIsItalic ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Italic"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.italic),
+                    "italic",
+                  )
+                }
+              >
+                <span className="text-sm italic">I</span>
+              </Button>
+              <Button
+                type="button"
+                variant={selectedIsUnderline ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Underline"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleTextFormatBitOnAll(selectedRichText.lexical, TEXT_FORMAT_BITS.underline),
+                    "underline",
+                  )
+                }
+              >
+                <span className="text-sm underline">U</span>
+              </Button>
+              <Button
+                type="button"
+                variant={selectedIsStrikethrough ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Strikethrough"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleTextFormatBitOnAll(
+                      selectedRichText.lexical,
+                      TEXT_FORMAT_BITS.strikethrough,
+                    ),
+                    "strikethrough",
+                  )
+                }
+              >
+                <span className="text-sm line-through">S</span>
+              </Button>
 
-            <div className="mx-1 h-6 w-px bg-border" />
+              <div className="mx-1 h-6 w-px bg-border" />
 
-            <Button
-              type="button"
-              variant={selectedHasBulletList ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Bullet List"
-              disabled={!canApplyTextStyle}
-              onClick={() => applyRichTextUpdate(toggleListTypeOnRoot(selectedRichText.lexical, "bullet"), "list-bullet")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant={selectedHasNumberedList ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Numbered List"
-              disabled={!canApplyTextStyle}
-              onClick={() => applyRichTextUpdate(toggleListTypeOnRoot(selectedRichText.lexical, "number"), "list-number")}
-            >
-              <ListOrdered className="h-4 w-4" />
-            </Button>
+              <Button
+                type="button"
+                variant={selectedHasBulletList ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Bullet List"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleListTypeOnRoot(selectedRichText.lexical, "bullet"),
+                    "list-bullet",
+                  )
+                }
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant={selectedHasNumberedList ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Numbered List"
+                disabled={!canApplyTextStyle}
+                onClick={() =>
+                  applyRichTextUpdate(
+                    toggleListTypeOnRoot(selectedRichText.lexical, "number"),
+                    "list-number",
+                  )
+                }
+              >
+                <ListOrdered className="h-4 w-4" />
+              </Button>
 
-            <div className="mx-1 h-6 w-px bg-border" />
+              <div className="mx-1 h-6 w-px bg-border" />
 
-            <Button
-              type="button"
-              variant={selectedLinkUrl ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Link"
-              disabled={!canApplyTextStyle}
-              onClick={applyLinkFromPrompt}
-            >
-              <Link2 className="h-4 w-4" />
-            </Button>
+              <Button
+                type="button"
+                variant={selectedLinkUrl ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8"
+                title="Link"
+                disabled={!canApplyTextStyle}
+                onClick={applyLinkFromPrompt}
+              >
+                <Link2 className="h-4 w-4" />
+              </Button>
 
-            <div className="mx-1 h-6 w-px bg-border" />
+              <div className="mx-1 h-6 w-px bg-border" />
 
-            <select
-              className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-              value={selectedFontSizeValue}
-              disabled={!canApplyTextStyle}
-              onChange={(event) =>
-                applyRichTextUpdate(
-                  setTextStylePropertyOnAll(selectedRichText.lexical, "font-size", event.target.value),
-                  "font-size",
-                )
-              }
-              title="Font size"
-            >
-              {fontSizeOptions.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-
-            <Button
-              type="button"
-              variant={selectedIsCentered ? "default" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              title="Align Center"
-              disabled={!canApplyTextStyle}
-              onClick={() =>
-                applyRichTextUpdate(
-                  setBlockAlignmentOnAll(selectedRichText.lexical, selectedIsCentered ? "left" : "center"),
-                  "align-center",
-                )
-              }
-            >
-              <AlignCenter className="h-4 w-4" />
-            </Button>
-
-            <label className="relative block h-8 w-8 overflow-hidden rounded border border-border">
-              <input
-                type="color"
-                value={selectedTextColor}
+              <select
+                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                value={selectedFontSizeValue}
                 disabled={!canApplyTextStyle}
                 onChange={(event) =>
                   applyRichTextUpdate(
-                    setTextStylePropertyOnAll(selectedRichText.lexical, "color", event.target.value),
-                    "color",
+                    setTextStylePropertyOnAll(
+                      selectedRichText.lexical,
+                      "font-size",
+                      event.target.value,
+                    ),
+                    "font-size",
                   )
                 }
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                title="Text Color"
-              />
-              <span className="block h-full w-full" style={{ backgroundColor: selectedTextColor }} />
-            </label>
+                title="Font size"
+              >
+                {fontSizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
 
-            <div className="mx-1 h-6 w-px bg-border" />
+              <AlignmentDropdown
+                value={selectedAlignment}
+                disabled={!canApplyTextStyle}
+                triggerClassName="h-8 w-8"
+                onChange={(next) =>
+                  applyRichTextUpdate(
+                    setBlockAlignmentOnAll(selectedRichText.lexical, next),
+                    `align-${next}`,
+                  )
+                }
+              />
+
+              <label className="relative block h-8 w-8 overflow-hidden rounded border border-border">
+                <input
+                  type="color"
+                  value={selectedTextColor}
+                  disabled={!canApplyTextStyle}
+                  onChange={(event) =>
+                    applyRichTextUpdate(
+                      setTextStylePropertyOnAll(
+                        selectedRichText.lexical,
+                        "color",
+                        event.target.value,
+                      ),
+                      "color",
+                    )
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  title="Text Color"
+                />
+                <span
+                  className="block h-full w-full"
+                  style={{ backgroundColor: selectedTextColor }}
+                />
+              </label>
+
+              <div className="mx-1 h-6 w-px bg-border" />
 
               <Button
                 type="button"
@@ -1662,7 +1731,9 @@ export function CreativeEditor({
                 variant={editingRichTextId === selectedRichText.id ? "default" : "outline"}
                 className="h-8 px-3 text-xs"
                 onClick={() =>
-                  setEditingRichTextId((current) => (current === selectedRichText.id ? null : selectedRichText.id))
+                  setEditingRichTextId((current) =>
+                    current === selectedRichText.id ? null : selectedRichText.id,
+                  )
                 }
               >
                 {editingRichTextId === selectedRichText.id ? "Done" : "Edit Text"}
@@ -1672,8 +1743,14 @@ export function CreativeEditor({
         ) : null}
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 items-center" data-testid="creative-card-stage">
-        <div ref={stageViewportRef} className="flex h-full w-full items-center justify-center overflow-hidden">
+      <div
+        className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 items-center"
+        data-testid="creative-card-stage"
+      >
+        <div
+          ref={stageViewportRef}
+          className="flex h-full w-full items-center justify-center overflow-hidden"
+        >
           <div
             className="origin-top"
             style={{
@@ -1684,77 +1761,84 @@ export function CreativeEditor({
             data-testid="creative-card-scale-frame"
           >
             <div
-            className="relative rounded-2xl border border-zinc-200/80 p-1.5 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
-            style={{ backgroundColor: side.layout.creativeLayout.background }}
-            data-testid="creative-card-shell"
-          >
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-0 z-0" data-testid="creative-richtext-static-layer">
-                {richTextElements.map((element) => {
-                  if (editingRichTextId === element.id && tool === "select") return null;
-                  const creativeTransform = resolveCreativeTransform(element);
-                  return (
-                    <div
-                      key={element.id}
-                      className="absolute overflow-hidden"
-                      style={{
-                        left: creativeTransform.x,
-                        top: creativeTransform.y,
-                        width: Math.max(RICH_TEXT_MIN_WIDTH, creativeTransform.width),
-                        height: Math.max(RICH_TEXT_MIN_HEIGHT, creativeTransform.height),
-                        transform: `rotate(${creativeTransform.rotation ?? 0}deg)`,
-                        transformOrigin: "top left",
-                      }}
-                      data-testid={`creative-richtext-static-${element.id}`}
-                    >
-                      <LexicalRichTextView
-                        lexical={element.lexical}
-                        scale={1}
-                        scrollOnHover
-                        className="h-full w-full leading-[1.35] text-[#0f172a]"
+              className="relative rounded-2xl border border-zinc-200/80 p-1.5 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+              style={{ backgroundColor: side.layout.creativeLayout.background }}
+              data-testid="creative-card-shell"
+            >
+              <div className="relative">
+                <div
+                  className="pointer-events-none absolute inset-0 z-0"
+                  data-testid="creative-richtext-static-layer"
+                >
+                  {richTextElements.map((element) => {
+                    if (editingRichTextId === element.id && tool === "select") return null;
+                    const creativeTransform = resolveCreativeTransform(element);
+                    return (
+                      <div
+                        key={element.id}
+                        className="absolute overflow-hidden"
+                        style={{
+                          left: creativeTransform.x,
+                          top: creativeTransform.y,
+                          width: Math.max(RICH_TEXT_MIN_WIDTH, creativeTransform.width),
+                          height: Math.max(RICH_TEXT_MIN_HEIGHT, creativeTransform.height),
+                          transform: `rotate(${creativeTransform.rotation ?? 0}deg)`,
+                          transformOrigin: "top left",
+                        }}
+                        data-testid={`creative-richtext-static-${element.id}`}
+                      >
+                        <LexicalRichTextView
+                          lexical={element.lexical}
+                          scale={1}
+                          scrollOnHover
+                          className="h-full w-full leading-[1.35] text-[#0f172a]"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <canvas
+                  ref={canvasElRef}
+                  className="relative z-10 block rounded-xl bg-transparent"
+                  data-testid="creative-card-canvas"
+                />
+                {canRenderInlineEditor ? (
+                  <div
+                    className="pointer-events-none absolute z-20 overflow-visible bg-transparent"
+                    style={inlineEditorStyle}
+                    data-testid="creative-inline-richtext-editor"
+                  >
+                    <div className="pointer-events-auto h-full w-full">
+                      <LexicalRichTextEditor
+                        variant="inline"
+                        showToolbar={false}
+                        className="h-full w-full border-0 bg-transparent shadow-none"
+                        editorKey={`creative-${editingRichText.id}`}
+                        value={editingRichText.lexical}
+                        onImageInsert={addImage}
+                        onChange={(nextLexical) => {
+                          pendingSelectionElementIdsRef.current = [editingRichText.id];
+                          onApply(
+                            [
+                              {
+                                kind: "updateElement",
+                                elementId: editingRichText.id,
+                                patch: { lexical: nextLexical } as Partial<SideElement>,
+                              },
+                            ],
+                            {
+                              source: "creative",
+                              batchKey: `creative-richtext-${editingRichText.id}`,
+                              coalesceMs: 450,
+                            },
+                          );
+                        }}
                       />
                     </div>
-                  );
-                })}
-              </div>
-              <canvas ref={canvasElRef} className="relative z-10 block rounded-xl bg-transparent" data-testid="creative-card-canvas" />
-              {canRenderInlineEditor ? (
-                <div
-                  className="pointer-events-none absolute z-20 overflow-visible bg-transparent"
-                  style={inlineEditorStyle}
-                  data-testid="creative-inline-richtext-editor"
-                >
-                  <div className="pointer-events-auto h-full w-full">
-                    <LexicalRichTextEditor
-                      variant="inline"
-                      showToolbar={false}
-                      className="h-full w-full border-0 bg-transparent shadow-none"
-                      editorKey={`creative-${editingRichText.id}`}
-                      value={editingRichText.lexical}
-                      onImageInsert={addImage}
-                      onChange={(nextLexical) => {
-                        pendingSelectionElementIdsRef.current = [editingRichText.id];
-                        onApply(
-                          [
-                            {
-                              kind: "updateElement",
-                              elementId: editingRichText.id,
-                              patch: { lexical: nextLexical } as Partial<SideElement>,
-                            },
-                          ],
-                          {
-                            source: "creative",
-                            batchKey: `creative-richtext-${editingRichText.id}`,
-                            coalesceMs: 450,
-                          },
-                        );
-                      }}
-                    />
                   </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          </div>
           </div>
         </div>
       </div>

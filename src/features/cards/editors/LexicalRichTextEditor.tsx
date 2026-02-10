@@ -1,37 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { ListPlugin } from "@lexical/react/LexicalListPlugin";
-import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
-import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
-import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import {
-  $getSelection,
-  $isRangeSelection,
-  type EditorState,
-} from "lexical";
-import {
-  TableCellNode,
-  TableNode,
-  TableRowNode,
-} from "@lexical/table";
+import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { LinkNode, AutoLinkNode } from "@lexical/link";
 import { $getSelectionStyleValueForProperty } from "@lexical/selection";
+import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
+import { $getSelection, $isRangeSelection, type EditorState } from "lexical";
+import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Toolbar } from "./lexical/Toolbar";
 import type { FormatState } from "./lexical/types";
 
-function FormatStatePlugin({
-  onFormatChange,
-}: {
-  onFormatChange: (state: FormatState) => void;
-}) {
+function normalizeSelectionAlignment(value: string | null | undefined): FormatState["alignment"] {
+  if (value === "center" || value === "right" || value === "justify") {
+    return value;
+  }
+  return "left";
+}
+
+function FormatStatePlugin({ onFormatChange }: { onFormatChange: (state: FormatState) => void }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -45,18 +40,23 @@ function FormatStatePlugin({
             isUnderline: false,
             isStrikethrough: false,
             fontSize: "16px",
+            alignment: "left",
           });
           return;
         }
 
         const fontSize =
           $getSelectionStyleValueForProperty(selection, "font-size", "16px") ?? "16px";
+        const alignment = normalizeSelectionAlignment(
+          selection.anchor.getNode().getTopLevelElementOrThrow().getFormatType(),
+        );
         onFormatChange({
           isBold: selection.hasFormat("bold"),
           isItalic: selection.hasFormat("italic"),
           isUnderline: selection.hasFormat("underline"),
           isStrikethrough: selection.hasFormat("strikethrough"),
           fontSize,
+          alignment,
         });
       });
     });
@@ -203,6 +203,7 @@ export function LexicalRichTextEditor({
     isUnderline: false,
     isStrikethrough: false,
     fontSize: "16px",
+    alignment: "left",
   });
 
   const initialConfig = useMemo(

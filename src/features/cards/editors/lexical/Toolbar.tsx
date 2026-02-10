@@ -1,24 +1,17 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { TOGGLE_LINK_COMMAND } from "@lexical/link";
+import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $patchStyleText } from "@lexical/selection";
+import { INSERT_TABLE_COMMAND } from "@lexical/table";
 import {
-  FORMAT_ELEMENT_COMMAND,
-  FORMAT_TEXT_COMMAND,
   $getSelection,
   $isRangeSelection,
+  FORMAT_ELEMENT_COMMAND,
+  FORMAT_TEXT_COMMAND,
 } from "lexical";
-import { INSERT_TABLE_COMMAND } from "@lexical/table";
-import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@lexical/list";
-import { TOGGLE_LINK_COMMAND } from "@lexical/link";
-import { $patchStyleText } from "@lexical/selection";
-import {
-  AlignCenter,
-  ImagePlus,
-  Link2,
-  List,
-  ListOrdered,
-  Table,
-  Youtube,
-} from "lucide-react";
+import { ImagePlus, Link2, List, ListOrdered, Table, Youtube } from "lucide-react";
+import { type ReactNode, useCallback, useState } from "react";
+import { AlignmentDropdown } from "./alignment-controls";
 import type { FormatState } from "./types";
 
 function normalizeHttpUrl(url: string) {
@@ -141,7 +134,12 @@ function ToolbarInsertButtons({
       </ToolbarOptionalButton>
 
       {showTableButton ? (
-        <button type="button" className={iconButtonClass} onClick={onInsertTable} title="Insert Table">
+        <button
+          type="button"
+          className={iconButtonClass}
+          onClick={onInsertTable}
+          title="Insert Table"
+        >
           <Table className="h-4 w-4" />
         </button>
       ) : null}
@@ -157,6 +155,7 @@ export function Toolbar({
 }: ToolbarProps) {
   const [editor] = useLexicalComposerContext();
   const [textColor, setTextColor] = useState("#111827");
+  const alignmentValue = formatState.alignment;
 
   const onInsertTable = useCallback(
     () =>
@@ -258,14 +257,11 @@ export function Toolbar({
         ))}
       </select>
 
-      <button
-        type="button"
-        className={iconButtonClass}
-        onClick={() => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, "center")}
-        title="Align Center"
-      >
-        <AlignCenter className="h-4 w-4" />
-      </button>
+      <AlignmentDropdown
+        value={alignmentValue}
+        onChange={(next) => editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, next)}
+        triggerClassName={iconButtonClass}
+      />
       <div className="mx-1 h-6 w-px bg-border" />
 
       <button
