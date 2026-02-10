@@ -3,50 +3,7 @@ import {
   DEFAULT_QUICK_LAYOUT,
   DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
 } from "../../shared/sideIRDefaults";
-
-export type SideIR = {
-  version: 1;
-  elements: Array<{
-    id: string;
-    type: "richText" | "image" | "embed" | "stroke";
-    quick: {
-      order: number;
-    };
-    creative: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rotation: number;
-    };
-    lexical?: unknown;
-    assetId?: string;
-    url?: string;
-    alt?: string;
-    points?: number[][];
-    svgPath?: string;
-    baseWidth?: number;
-    baseHeight?: number;
-    style?: {
-      color: string;
-      width: number;
-    };
-  }>;
-  layout: {
-    quickLayout: {
-      mode: "centered";
-      cardRatio: number;
-      previewScale: number;
-    };
-    creativeLayout: {
-      width: number;
-      height: number;
-      background: string;
-      fixedViewport: true;
-      padding: number;
-    };
-  };
-};
+import type { SideIR } from "../../shared/sideIRTypes";
 
 export function createDefaultSideIR(seed = "1"): SideIR {
   return {

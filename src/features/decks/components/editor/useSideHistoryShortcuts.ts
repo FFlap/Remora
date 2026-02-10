@@ -4,7 +4,14 @@ import type { SideIR } from "@/features/cards/side-ir/types";
 
 type SideHistoryLike = {
   present: SideIR;
-  apply: (operation: SideOperation | SideOperation[]) => void;
+  apply: (
+    operations: SideOperation[],
+    meta?: {
+      source?: "quick" | "creative" | "system";
+      batchKey?: string;
+      coalesceMs?: number;
+    },
+  ) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -14,6 +21,17 @@ type SideHistoryLike = {
 export function useSideHistoryShortcuts(sideHistory: SideHistoryLike) {
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const targetElement = target instanceof Element ? target : null;
+      const allowSideHistory = targetElement?.closest('[data-allow-side-history="true"]') !== null;
+      const isTextEditingTarget =
+        targetElement?.closest(
+          'input, textarea, select, [contenteditable="true"], [contenteditable]:not([contenteditable="false"])',
+        ) !== null;
+      if (isTextEditingTarget && !allowSideHistory) {
+        return;
+      }
+
       const modifier = event.metaKey || event.ctrlKey;
       if (!modifier) return;
 

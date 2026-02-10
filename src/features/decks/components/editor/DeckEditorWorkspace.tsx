@@ -1,5 +1,5 @@
 import { PenSquare, Plus, Redo2, Shapes, Trash2, Undo2 } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-ir/ops";
@@ -20,7 +20,14 @@ const CreativeEditor = lazy(async () => {
 
 type SideHistoryLike = {
   present: SideIR;
-  apply: (operation: SideOperation | SideOperation[]) => void;
+  apply: (
+    operations: SideOperation[],
+    meta?: {
+      source?: "quick" | "creative" | "system";
+      batchKey?: string;
+      coalesceMs?: number;
+    },
+  ) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -28,7 +35,7 @@ type SideHistoryLike = {
 };
 
 type DeckEditorWorkspaceProps = {
-  selectedCard: DeckEditorCardData["card"] | null | undefined;
+  selectedCard: NonNullable<DeckEditorCardData>["card"] | null | undefined;
   selectedCardData: DeckEditorCardData | undefined;
   sideHistory: SideHistoryLike;
   editorMode: "quick" | "creative";
@@ -55,6 +62,12 @@ export function DeckEditorWorkspace({
 }: DeckEditorWorkspaceProps) {
   const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0];
   const editorKey = `${selectedCard?._id ?? "none"}:${activeSide?._id ?? "none"}:${editorMode}`;
+  const applyArray = useCallback(
+    (operations: SideOperation[]) => {
+      sideHistory.apply(operations);
+    },
+    [sideHistory],
+  );
 
   if (!selectedCard) {
     return (
@@ -151,13 +164,9 @@ export function DeckEditorWorkspace({
             }
           >
             {editorMode === "quick" ? (
-              <QuickEditor key={editorKey} side={sideHistory.present} onApply={sideHistory.apply} />
+              <QuickEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
             ) : (
-              <CreativeEditor
-                key={editorKey}
-                side={sideHistory.present}
-                onApply={sideHistory.apply}
-              />
+              <CreativeEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
             )}
           </Suspense>
         </div>

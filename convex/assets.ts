@@ -4,17 +4,43 @@ import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser } from "./lib/auth";
 import { assetDocValidator, assetWithResolvedUrlValidator } from "./lib/constants";
 
+const UPLOAD_SESSION_TTL_MS = 1000 * 60 * 30;
+
+function createUploadToken() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random()
+    .toString(36)
+    .slice(2, 12)}`;
+}
+
 export const generateUploadUrl = mutation({
   args: {},
-  returns: v.string(),
+  returns: v.object({
+    uploadUrl: v.string(),
+    uploadToken: v.string(),
+  }),
   handler: async (ctx) => {
-    await ensureCurrentUser(ctx);
-    return await ctx.storage.generateUploadUrl();
+    const user = await ensureCurrentUser(ctx);
+    const now = Date.now();
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+    const uploadToken = createUploadToken();
+
+    await ctx.db.insert("assetUploadSessions", {
+      uploaderUserId: user._id,
+      uploadToken,
+      createdAt: now,
+      expiresAt: now + UPLOAD_SESSION_TTL_MS,
+    });
+
+    return {
+      uploadUrl,
+      uploadToken,
+    };
   },
 });
 
 export const saveUploadedImage = mutation({
   args: {
+    uploadToken: v.string(),
     storageId: v.id("_storage"),
     deckId: v.optional(v.id("decks")),
     mime: v.optional(v.string()),
@@ -28,6 +54,25 @@ export const saveUploadedImage = mutation({
   handler: async (ctx, args) => {
     const user = await ensureCurrentUser(ctx);
     const normalizedMime = args.mime?.trim().toLowerCase();
+    const now = Date.now();
+
+    const uploadSession = await ctx.db
+      .query("assetUploadSessions")
+      .withIndex("by_token", (q) => q.eq("uploadToken", args.uploadToken))
+      .first();
+    if (!uploadSession) {
+      throw new Error("Upload session not found");
+    }
+    if (uploadSession.uploaderUserId !== user._id) {
+      throw new Error("Forbidden");
+    }
+    if (uploadSession.consumedAt) {
+      throw new Error("Upload session already used");
+    }
+    if (uploadSession.expiresAt < now) {
+      await ctx.db.delete(uploadSession._id);
+      throw new Error("Upload session expired");
+    }
 
     if (normalizedMime && !normalizedMime.startsWith("image/")) {
       throw new Error("Only image uploads are allowed");
@@ -45,6 +90,18 @@ export const saveUploadedImage = mutation({
       await assertCanEditDeck(ctx, args.deckId);
     }
 
+    const existingAsset = await ctx.db
+      .query("assets")
+      .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (existingAsset) {
+      throw new Error("Uploaded image already claimed");
+    }
+
+    await ctx.db.patch(uploadSession._id, {
+      consumedAt: now,
+    });
+
     const url = await ctx.storage.getUrl(args.storageId);
 
     const assetId = await ctx.db.insert("assets", {
@@ -58,7 +115,7 @@ export const saveUploadedImage = mutation({
         width: args.width,
         height: args.height,
       },
-      createdAt: Date.now(),
+      createdAt: now,
     });
 
     return {
@@ -87,8 +144,8 @@ export const getAsset = query({
     }
 
     const resolvedUrl = asset.storageId
-      ? (await ctx.storage.getUrl(asset.storageId)) ?? null
-      : asset.url ?? null;
+      ? ((await ctx.storage.getUrl(asset.storageId)) ?? null)
+      : (asset.url ?? null);
 
     return {
       ...asset,

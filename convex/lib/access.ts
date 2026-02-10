@@ -1,4 +1,4 @@
-import type { Id, Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { ReadCtx, WriteCtx } from "./auth";
 import { getCurrentUser, normalizeEmail } from "./auth";
 
@@ -51,7 +51,15 @@ export async function getDeckReadDecision(
   }
 
   const normalizedViewerEmail = normalizeEmail(identity.email);
-  const normalizedWhitelist = deck.whitelistEmails.map(normalizeEmail);
+  if (!normalizedViewerEmail) {
+    return {
+      allowed: false,
+      isOwner: false,
+      reason: "whitelist_requestable",
+    };
+  }
+
+  const normalizedWhitelist = deck.whitelistEmails.map(normalizeEmail).filter(Boolean);
 
   if (normalizedWhitelist.includes(normalizedViewerEmail)) {
     return { allowed: true, isOwner: false };

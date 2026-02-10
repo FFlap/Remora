@@ -1,6 +1,6 @@
 import { PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { SideIR, StrokePath } from "@/features/cards/side-ir/types";
+import type { SideElement, SideIR, StrokePath } from "@/features/cards/side-ir/types";
 import { cn } from "@/lib/utils";
 import { LexicalRichTextView } from "./LexicalRichTextView";
 
@@ -71,6 +71,23 @@ function renderStroke(element: StrokePath) {
       />
     </svg>
   );
+}
+
+function asRenderableStrokePath(element: SideElement): StrokePath | null {
+  if (element.type !== "stroke") return null;
+  if (!Array.isArray(element.points)) return null;
+  const points: Array<[number, number]> = [];
+  for (const point of element.points) {
+    if (!Array.isArray(point) || point.length < 2) return null;
+    const x = point[0];
+    const y = point[1];
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    points.push([x, y]);
+  }
+  return {
+    ...element,
+    points,
+  };
 }
 
 function sortedElements(side: SideIR) {
@@ -164,53 +181,54 @@ export function SideCardPreview({
           transformOrigin: "top left",
         }}
       >
-        {sortedElements(side).map((element) => (
-          <div
-            key={element.id}
-            className={cn(
-              "absolute",
-              element.type === "stroke"
-                ? "pointer-events-none overflow-visible"
-                : "overflow-hidden",
-            )}
-            style={{
-              left: element.creative.x,
-              top: element.creative.y,
-              width: element.creative.width,
-              height: element.creative.height,
-              transform: `rotate(${element.creative.rotation ?? 0}deg)`,
-              transformOrigin: "top left",
-            }}
-          >
-            {element.type === "richText" && (
-              <LexicalRichTextView
-                lexical={element.lexical}
-                scale={1}
-                scrollOnHover
-                className="h-full w-full leading-[1.35]"
-                dataTestId={dataTestId ? `${dataTestId}-richtext-${element.id}` : undefined}
-              />
-            )}
+        {sortedElements(side).map((element) => {
+          const stroke = asRenderableStrokePath(element);
+          return (
+            <div
+              key={element.id}
+              className={cn(
+                "absolute",
+                stroke ? "pointer-events-none overflow-visible" : "overflow-hidden",
+              )}
+              style={{
+                left: element.creative.x,
+                top: element.creative.y,
+                width: element.creative.width,
+                height: element.creative.height,
+                transform: `rotate(${element.creative.rotation ?? 0}deg)`,
+                transformOrigin: "top left",
+              }}
+            >
+              {element.type === "richText" && (
+                <LexicalRichTextView
+                  lexical={element.lexical}
+                  scale={1}
+                  scrollOnHover
+                  className="h-full w-full leading-[1.35]"
+                  dataTestId={dataTestId ? `${dataTestId}-richtext-${element.id}` : undefined}
+                />
+              )}
 
-            {element.type === "image" && element.url && (
-              <img
-                src={element.url}
-                className="h-full w-full object-cover"
-                alt={element.alt ?? "Card image"}
-                draggable={false}
-              />
-            )}
+              {element.type === "image" && element.url && (
+                <img
+                  src={element.url}
+                  className="h-full w-full object-cover"
+                  alt={element.alt ?? "Card image"}
+                  draggable={false}
+                />
+              )}
 
-            {element.type === "embed" && (
-              <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-[10px] font-medium text-zinc-600">
-                <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
-                YouTube
-              </div>
-            )}
+              {element.type === "embed" && (
+                <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 text-[10px] font-medium text-zinc-600">
+                  <PlayCircle className="mr-1.5 h-3.5 w-3.5" />
+                  YouTube
+                </div>
+              )}
 
-            {element.type === "stroke" && renderStroke(element)}
-          </div>
-        ))}
+              {stroke && renderStroke(stroke)}
+            </div>
+          );
+        })}
       </div>
 
       {side.elements.length === 0 && (

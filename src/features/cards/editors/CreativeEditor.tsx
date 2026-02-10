@@ -25,7 +25,13 @@ import { Button } from "@/components/ui/button";
 import { LexicalRichTextView } from "@/features/cards/components/LexicalRichTextView";
 import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
 import type { SideOperation } from "../side-ir/ops";
-import type { SideElement, SideIR, StrokePath } from "../side-ir/types";
+import type {
+  CreativeTransform,
+  RichTextBlock,
+  SideElement,
+  SideIR,
+  StrokePath,
+} from "../side-ir/types";
 import {
   applyInsightSelectionStyle,
   buildActiveSelectionSnapshot,

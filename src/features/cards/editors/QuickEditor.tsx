@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
 import type { SideOperation } from "../side-ir/ops";
-import type { RichTextBlock, SideElement, SideIR } from "../side-ir/types";
+import type { EmbedBlock, ImageBlock, RichTextBlock, SideElement, SideIR } from "../side-ir/types";
 import { QuickEditorContent } from "./quick/QuickEditorContent";
 
 function normalizeHttpUrl(url: string) {
@@ -125,7 +125,10 @@ export function QuickEditor({
   );
 
   const mediaElements = useMemo(
-    () => side.elements.filter((el) => el.type === "image" || el.type === "embed"),
+    () =>
+      side.elements.filter(
+        (el): el is ImageBlock | EmbedBlock => el.type === "image" || el.type === "embed",
+      ),
     [side.elements],
   );
   const cardBackground = side.layout.creativeLayout.background ?? "#ffffff";

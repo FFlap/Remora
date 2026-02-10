@@ -34,6 +34,7 @@ export function DeckListCard({
       tabIndex={0}
       onClick={() => onOpenDeck(deckId)}
       onKeyDown={(event) => {
+        if (event.currentTarget !== event.target) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onOpenDeck(deckId);
@@ -51,12 +52,17 @@ export function DeckListCard({
                 size="icon"
                 className="h-8 w-8 shrink-0 rounded-md"
                 onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
                 <span className="sr-only">Deck options</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()} className="w-52">
+            <DropdownMenuContent
+              align="end"
+              onClick={(event) => event.stopPropagation()}
+              className="w-52"
+            >
               <DropdownMenuItem onSelect={onEditDetails}>Edit deck details</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

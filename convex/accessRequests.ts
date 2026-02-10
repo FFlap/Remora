@@ -1,8 +1,8 @@
 import { v } from "convex/values";
+import { parseAccessRequestMessage } from "../shared/contracts/deckValidation";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, getDeckOrThrow } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
-import { parseAccessRequestMessage } from "../shared/contracts/deckValidation";
 import { deckAccessRequestDocValidator } from "./lib/constants";
 
 export const requestAccess = mutation({
@@ -24,7 +24,11 @@ export const requestAccess = mutation({
       throw new Error("Owners do not need access requests");
     }
 
-    if (deck.whitelistEmails.includes(normalizeEmail(user.email))) {
+    const requesterEmail = normalizeEmail(user.email);
+    if (
+      requesterEmail &&
+      deck.whitelistEmails.map(normalizeEmail).filter(Boolean).includes(requesterEmail)
+    ) {
       throw new Error("You already have access");
     }
 
@@ -54,7 +58,7 @@ export const requestAccess = mutation({
     return await ctx.db.insert("deckAccessRequests", {
       deckId: deck._id,
       requesterUserId: user._id,
-      requesterEmail: normalizeEmail(user.email),
+      requesterEmail,
       message,
       status: "pending",
       createdAt: now,
@@ -122,11 +126,12 @@ export const resolveRequest = mutation({
     });
 
     if (args.decision === "approved") {
+      const normalizedRequesterEmail = normalizeEmail(request.requesterEmail);
       const whitelistEmails = Array.from(
-        new Set([...deck.whitelistEmails, normalizeEmail(request.requesterEmail)]),
+        new Set([...deck.whitelistEmails, normalizedRequesterEmail]),
       );
       await ctx.db.patch(deck._id, {
-        whitelistEmails,
+        whitelistEmails: whitelistEmails.filter(Boolean),
         updatedAt: now,
       });
     }

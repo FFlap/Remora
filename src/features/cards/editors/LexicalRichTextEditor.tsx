@@ -162,7 +162,10 @@ function scrollOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
   const target = candidates.find((node) => node.scrollHeight > node.clientHeight + 1);
   if (!target) return;
 
-  target.scrollTop += event.deltaY;
+  if (!event.nativeEvent.isTrusted) {
+    event.preventDefault();
+    target.scrollTop += event.deltaY;
+  }
   event.stopPropagation();
 }
 
@@ -274,6 +277,7 @@ export function LexicalRichTextEditor({
 }) {
   const serializedValue = useMemo(() => JSON.stringify(value), [value]);
   const lastLocalChangeRef = useRef(serializedValue);
+  const initialSerializedValueRef = useRef(serializedValue);
   const contentEditableRef = useRef<HTMLDivElement | null>(null);
   const isInline = variant === "inline";
   const isPanelScrollable = !isInline && panelScrollable;
@@ -288,8 +292,8 @@ export function LexicalRichTextEditor({
   });
 
   const initialConfig = useMemo(
-    () => createInitialConfig(editorKey, serializedValue, isInline),
-    [editorKey, isInline, serializedValue],
+    () => createInitialConfig(editorKey, initialSerializedValueRef.current, isInline),
+    [editorKey, isInline],
   );
 
   const handleChange = useCallback(

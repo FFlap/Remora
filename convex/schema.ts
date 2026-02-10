@@ -88,5 +88,16 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_owner", ["ownerUserId"])
-    .index("by_deck", ["deckId"]),
+    .index("by_deck", ["deckId"])
+    .index("by_storage", ["storageId"]),
+
+  assetUploadSessions: defineTable({
+    uploaderUserId: v.id("users"),
+    uploadToken: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    consumedAt: v.optional(v.number()),
+  })
+    .index("by_token", ["uploadToken"])
+    .index("by_uploader", ["uploaderUserId"]),
 });

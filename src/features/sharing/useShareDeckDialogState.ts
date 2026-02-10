@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ZodError } from "zod";
 import { toast } from "sonner";
-import { parseDeckSharingInput } from "../../../shared/contracts/deckValidation";
+import { ZodError } from "zod";
 import type { Doc } from "@/lib/convexApi";
+import { parseDeckSharingInput } from "../../../shared/contracts/deckValidation";
 
 export type ShareDeckVisibility = "public" | "unlisted" | "private" | "whitelist";
 
 type DeckDoc = Doc<"decks">;
+
+function normalizeVisibility(value: unknown): ShareDeckVisibility {
+  if (value === "public" || value === "unlisted" || value === "private" || value === "whitelist") {
+    return value;
+  }
+  return "private";
+}
+
+function normalizeWhitelistEmails(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
 
 function parseEmails(raw: string) {
   return Array.from(
@@ -35,8 +47,12 @@ export function useShareDeckDialogState({
   onOpenChange?: (open: boolean) => void;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const [visibility, setVisibility] = useState(deck.visibility);
-  const [emailsRaw, setEmailsRaw] = useState(deck.whitelistEmails.join("\n"));
+  const [visibility, setVisibility] = useState<ShareDeckVisibility>(
+    normalizeVisibility(deck.visibility),
+  );
+  const [emailsRaw, setEmailsRaw] = useState(
+    normalizeWhitelistEmails(deck.whitelistEmails).join("\n"),
+  );
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -50,8 +66,8 @@ export function useShareDeckDialogState({
 
   useEffect(() => {
     if (!isOpen) return;
-    setVisibility(deck.visibility);
-    setEmailsRaw(deck.whitelistEmails.join("\n"));
+    setVisibility(normalizeVisibility(deck.visibility));
+    setEmailsRaw(normalizeWhitelistEmails(deck.whitelistEmails).join("\n"));
     setLocalError(null);
   }, [deck.visibility, deck.whitelistEmails, isOpen]);
 

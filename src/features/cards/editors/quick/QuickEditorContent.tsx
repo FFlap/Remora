@@ -3,7 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-ir/ops";
-import type { RichTextBlock, SideElement, SideIR } from "@/features/cards/side-ir/types";
+import type {
+  EmbedBlock,
+  ImageBlock,
+  RichTextBlock,
+  SideElement,
+  SideIR,
+} from "@/features/cards/side-ir/types";
 import { LexicalRichTextEditor } from "../LexicalRichTextEditor";
 
 const QUICK_CARD_COLORS = [
@@ -23,7 +29,7 @@ type QuickEditorContentProps = {
   side: SideIR;
   richText: RichTextBlock;
   richTextBlocks: RichTextBlock[];
-  mediaElements: SideElement[];
+  mediaElements: Array<ImageBlock | EmbedBlock>;
   cardBackground: string;
   setActiveRichTextId: (id: string) => void;
   onAddTextBlock: () => void;

@@ -1,23 +1,16 @@
 import { v } from "convex/values";
+import { parseDeckMetaInput, parseDeckSharingInput } from "../shared/contracts/deckValidation";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type QueryCtx } from "./_generated/server";
-import {
-  assertCanEditDeck,
-  getDeckOrThrow,
-  getDeckReadDecision,
-} from "./lib/access";
+import { mutation, type QueryCtx, query } from "./_generated/server";
+import { assertCanEditDeck, getDeckOrThrow, getDeckReadDecision } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
-import { createDefaultSideIR } from "./lib/sideIR";
 import {
   deckDocValidator,
   deckVisibilityValidator,
   getEditShellReturnValidator,
   getForViewerReturnValidator,
 } from "./lib/constants";
-import {
-  parseDeckMetaInput,
-  parseDeckSharingInput,
-} from "../shared/contracts/deckValidation";
+import { createDefaultSideIR } from "./lib/sideIR";
 
 async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
   const [sections, cards] = await Promise.all([
@@ -44,7 +37,10 @@ async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
     sidesByCardId.set(card._id, cardSides[index]);
   });
 
-  const cardsBySection = new Map<Id<"sections">, Array<Doc<"cards"> & { sides: Doc<"cardSides">[] }>>();
+  const cardsBySection = new Map<
+    Id<"sections">,
+    Array<Doc<"cards"> & { sides: Doc<"cardSides">[] }>
+  >();
   for (const card of cards) {
     const sectionCards = cardsBySection.get(card.sectionId) ?? [];
     sectionCards.push({
@@ -129,11 +125,15 @@ export const listPublic = query({
   args: {},
   returns: v.array(deckDocValidator),
   handler: async (ctx) => {
-    return await ctx.db
+    const decks = await ctx.db
       .query("decks")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .order("desc")
       .take(20);
+    return decks.map((deck) => ({
+      ...deck,
+      whitelistEmails: [],
+    }));
   },
 });
 
@@ -276,9 +276,7 @@ export const getForViewer = query({
 
     if (!decision.allowed) {
       const deniedAccess =
-        decision.reason && decision.reason !== "not_found"
-          ? decision.reason
-          : "private";
+        decision.reason && decision.reason !== "not_found" ? decision.reason : "private";
       return {
         access: deniedAccess,
         deck: {
@@ -291,9 +289,15 @@ export const getForViewer = query({
     }
 
     const sections = await loadDeckTree(ctx, deck._id);
+    const sanitizedDeck = decision.isOwner
+      ? deck
+      : {
+          ...deck,
+          whitelistEmails: [],
+        };
     return {
       access: "granted" as const,
-      deck,
+      deck: sanitizedDeck,
       sections,
       viewer: {
         isOwner: decision.isOwner,
