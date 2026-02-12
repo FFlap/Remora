@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
-import { createDefaultSideIR } from "./lib/sideIR";
 import { cardDocValidator, editorCardPayloadValidator } from "./lib/constants";
+import { createDefaultSideModel } from "./lib/sideModel";
 
 export const create = mutation({
   args: {
@@ -37,14 +37,14 @@ export const create = mutation({
     await ctx.db.insert("cardSides", {
       cardId,
       index: 0,
-      sideIR: createDefaultSideIR("1"),
+      sideModel: createDefaultSideModel("1"),
       createdAt: now,
       updatedAt: now,
     });
     await ctx.db.insert("cardSides", {
       cardId,
       index: 1,
-      sideIR: createDefaultSideIR("2"),
+      sideModel: createDefaultSideModel("2"),
       createdAt: now,
       updatedAt: now,
     });
@@ -109,10 +109,7 @@ export const reorderInSection = mutation({
 
     const cardSet = new Set(cards.map((c) => c._id));
     const orderedSet = new Set(args.orderedCardIds);
-    if (
-      orderedSet.size !== args.orderedCardIds.length ||
-      orderedSet.size !== cardSet.size
-    ) {
+    if (orderedSet.size !== args.orderedCardIds.length || orderedSet.size !== cardSet.size) {
       throw new Error("Invalid or incomplete card ordering");
     }
 

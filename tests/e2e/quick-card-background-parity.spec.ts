@@ -9,7 +9,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Background Parity Deck ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Quick/Creative card background parity");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Quick/Creative card background parity");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
@@ -30,13 +32,19 @@ test.describe("Quick card background parity", () => {
     const quickPreview = page.getByTestId("quick-live-preview-card");
     await expect(quickPreview).toBeVisible();
     await expect
-      .poll(async () => quickPreview.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor))
+      .poll(async () =>
+        quickPreview.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor),
+      )
       .toBe(targetRgb);
 
     const sidebarPreviewCard = page.locator('[data-testid^="card-sidebar-preview-"] > div').first();
     await expect(sidebarPreviewCard).toBeVisible();
     await expect
-      .poll(async () => sidebarPreviewCard.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor))
+      .poll(async () =>
+        sidebarPreviewCard.evaluate(
+          (node) => getComputedStyle(node as HTMLElement).backgroundColor,
+        ),
+      )
       .toBe(targetRgb);
 
     await page.getByTestId("mode-creative-button").click();
@@ -46,12 +54,16 @@ test.describe("Quick card background parity", () => {
     await expect(creativeShell).toBeVisible();
 
     await expect
-      .poll(async () => creativeShell.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor))
+      .poll(async () =>
+        creativeShell.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor),
+      )
       .toBe(targetRgb);
 
     await page.getByTestId("mode-quick-button").click();
     await expect
-      .poll(async () => quickPreview.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor))
+      .poll(async () =>
+        quickPreview.evaluate((node) => getComputedStyle(node as HTMLElement).backgroundColor),
+      )
       .toBe(targetRgb);
   });
 });

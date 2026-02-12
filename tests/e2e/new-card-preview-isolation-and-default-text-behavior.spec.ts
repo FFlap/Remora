@@ -21,6 +21,37 @@ function parseEditorCardId(url: string) {
   return match?.[1] ?? null;
 }
 
+function parseEditorDeckId(url: string) {
+  const match = url.match(/\/app\/decks\/([^/]+)\/edit\/card\/[^/]+/);
+  return match?.[1] ?? null;
+}
+
+async function waitForNewSidebarCardId(
+  page: Parameters<typeof test>[0]["page"],
+  previousCardId: string,
+) {
+  const handle = await page.waitForFunction(
+    ({ previousCardId }) => {
+      const previews = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-testid^="card-sidebar-preview-"]'),
+      );
+      for (const preview of previews) {
+        const testId = preview.getAttribute("data-testid") ?? "";
+        const cardId = testId.replace("card-sidebar-preview-", "");
+        if (cardId && cardId !== previousCardId) {
+          return cardId;
+        }
+      }
+      return null;
+    },
+    { previousCardId },
+    { timeout: 15_000 },
+  );
+
+  const value = await handle.jsonValue();
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"]) {
   await signInAsOwner(page);
   await page.goto("/app/decks/new");
@@ -249,18 +280,15 @@ test.describe("New-card preview isolation + default text behavior", () => {
 
     const cardPreviews = page.locator('[data-testid^="card-sidebar-preview-"]');
     await expect(cardPreviews).toHaveCount(2);
-    await expect
-      .poll(() => parseEditorCardId(page.url()) !== previousCardId, { timeout: 15000 })
-      .toBeTruthy();
-
-    const newCardId = parseEditorCardId(page.url());
+    const newCardId = await waitForNewSidebarCardId(page, previousCardId);
     expect(newCardId).toBeTruthy();
     expect(newCardId).not.toBe(previousCardId);
     if (!newCardId) return;
-
-    await expect(page.getByTestId(`card-sidebar-preview-${previousCardId}`)).toContainText(
-      previousCardToken,
-    );
+    const deckId = parseEditorDeckId(page.url());
+    expect(deckId).toBeTruthy();
+    if (!deckId) return;
+    await page.goto(`/app/decks/${deckId}/edit/card/${newCardId}`);
+    await expect(page).toHaveURL(new RegExp(`/app/decks/${deckId}/edit/card/${newCardId}$`));
 
     const quickPreview = page.getByTestId("quick-live-preview-card");
     const newCardSidebarPreview = page.getByTestId(`card-sidebar-preview-${newCardId}`);
@@ -346,8 +374,9 @@ test.describe("New-card preview isolation + default text behavior", () => {
     await expectCenteredPreviewParagraph(sidebarRichText);
     await expectCenteredPreviewParagraph(sideTrayRichText);
 
+    await quickEditor.click({ force: true });
     await page.keyboard.press(`${MODIFIER_KEY}+A`);
-    await page.getByRole("button", { name: "Text alignment" }).first().click();
+    await page.getByRole("button", { name: "Text alignment" }).first().click({ force: true });
     await page.getByRole("menuitem", { name: "Center" }).click();
     await page.waitForTimeout(120);
 

@@ -1,4 +1,4 @@
-import type { SideElement, SideIR } from "./types";
+import type { SideElement, SideModel } from "./types";
 
 export type SideOperation =
   | { kind: "addElement"; element: SideElement; index?: number }
@@ -10,27 +10,27 @@ export type SideOperation =
       creative: Partial<SideElement["creative"]>;
     }
   | { kind: "reorderElement"; elementId: string; toIndex: number }
-  | { kind: "setQuickProjection"; quickLayout: SideIR["layout"]["quickLayout"] }
+  | { kind: "setQuickProjection"; quickLayout: SideModel["layout"]["quickLayout"] }
   | {
       kind: "setCreativeProjection";
-      creativeLayout: Partial<SideIR["layout"]["creativeLayout"]>;
+      creativeLayout: Partial<SideModel["layout"]["creativeLayout"]>;
     }
   | { kind: "replaceElement"; elementId: string; element: SideElement };
 
 export type AppliedOperation = {
-  next: SideIR;
+  next: SideModel;
   inverse: SideOperation[];
 };
 
-export function cloneSideIR(side: SideIR): SideIR {
+export function cloneSideModel(side: SideModel): SideModel {
   if (typeof structuredClone === "function") {
     return structuredClone(side);
   }
-  return JSON.parse(JSON.stringify(side)) as SideIR;
+  return JSON.parse(JSON.stringify(side)) as SideModel;
 }
 
-export function applyOperation(side: SideIR, op: SideOperation): AppliedOperation {
-  const draft = cloneSideIR(side);
+export function applyOperation(side: SideModel, op: SideOperation): AppliedOperation {
+  const draft = cloneSideModel(side);
   const idx = "elementId" in op ? draft.elements.findIndex((el) => el.id === op.elementId) : -1;
 
   switch (op.kind) {
@@ -131,8 +131,8 @@ export function applyOperation(side: SideIR, op: SideOperation): AppliedOperatio
   }
 }
 
-export function applyOperations(side: SideIR, operations: SideOperation[]) {
-  let current = cloneSideIR(side);
+export function applyOperations(side: SideModel, operations: SideOperation[]) {
+  let current = cloneSideModel(side);
   const inverses: SideOperation[] = [];
 
   for (const operation of operations) {

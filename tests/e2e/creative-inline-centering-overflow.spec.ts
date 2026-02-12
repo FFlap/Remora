@@ -59,6 +59,7 @@ function getActiveCreativeElementId(page: Parameters<typeof test>[0]["page"]) {
   });
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Scenario intentionally validates centering, overflow, and alignment behavior end-to-end.
 test.describe("Creative inline textbox center-until-overflow", () => {
   test("keeps placeholder/text centered until overflow, then scrolls", async ({ page }) => {
     const token = `INLINE_CENTER_${Date.now()}`;

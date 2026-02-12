@@ -1,6 +1,6 @@
-import { useCallback } from "react";
-import { arrayMove } from "@dnd-kit/sortable";
 import type { DragEndEvent } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
+import { useCallback } from "react";
 import type { useReorderCardsInSection } from "@/features/cards/api/useCardsApi";
 import type { useReorderSections } from "@/features/sections/api/useSectionsApi";
 import type { Id } from "@/lib/convexApi";

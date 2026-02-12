@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { asSideIR } from "@/features/cards/side-ir/types";
+import { asSideModel } from "@/features/cards/side-model/types";
 import type { OrderedViewerCard, ViewerSection, ViewerSide } from "./viewerTypes";
 
 function flattenSections(sections: ViewerSection[]): OrderedViewerCard[] {
@@ -107,7 +107,7 @@ export function useDeckViewerState({
   );
   const sideCount = sortedSides.length;
   const selectedSide = sortedSides.find((entry) => entry.index === sideIndex) ?? sortedSides[0];
-  const selectedSideIR = asSideIR(selectedSide?.sideIR);
+  const selectedSideModel = asSideModel(selectedSide?.sideModel);
   const activeSidePosition = Math.max(
     0,
     sortedSides.findIndex((entry) => entry.index === selectedSide?.index),
@@ -151,7 +151,7 @@ export function useDeckViewerState({
     sideIndex,
     sideCount,
     selectedSide,
-    selectedSideIR,
+    selectedSideModel,
     activeSidePosition,
     orderedCardIndex,
     prevCard,

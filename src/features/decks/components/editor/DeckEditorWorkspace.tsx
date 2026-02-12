@@ -2,8 +2,8 @@ import { PenSquare, Plus, Redo2, Shapes, Trash2, Undo2 } from "lucide-react";
 import { lazy, Suspense, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
-import type { SideOperation } from "@/features/cards/side-ir/ops";
-import { asSideIR, type SideIR } from "@/features/cards/side-ir/types";
+import type { SideOperation } from "@/features/cards/side-model/ops";
+import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
 import type { DeckEditorCardData } from "@/features/decks/types/editor";
 import type { Doc } from "@/lib/convexApi";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ const CreativeEditor = lazy(async () => {
 });
 
 type SideHistoryLike = {
-  present: SideIR;
+  present: SideModel;
   apply: (
     operations: SideOperation[],
     meta?: {
@@ -63,8 +63,15 @@ export function DeckEditorWorkspace({
   const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0];
   const editorKey = `${selectedCard?._id ?? "none"}:${activeSide?._id ?? "none"}:${editorMode}`;
   const applyArray = useCallback(
-    (operations: SideOperation[]) => {
-      sideHistory.apply(operations);
+    (
+      operations: SideOperation[],
+      meta?: {
+        source?: "quick" | "creative" | "system";
+        batchKey?: string;
+        coalesceMs?: number;
+      },
+    ) => {
+      sideHistory.apply(operations, meta);
     },
     [sideHistory],
   );
@@ -86,12 +93,18 @@ export function DeckEditorWorkspace({
   }
 
   return (
-    <main className="flex-1 min-w-0 flex flex-col overflow-hidden transition-all duration-200">
+    <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden transition-all duration-200">
       <div className="deck-editor-shell-grid flex-1 min-h-0">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end border-b border-border px-3 md:px-4 lg:px-6">
-          <div />
+        <div
+          className="deck-editor-top-row grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end border-b border-border px-3 md:px-4 lg:px-6"
+          data-testid="editor-top-controls"
+        >
+          <div className="deck-editor-top-row-start" />
 
-          <div className="flex items-end justify-center">
+          <div
+            className="deck-editor-top-row-center flex items-end justify-center"
+            data-testid="editor-mode-controls"
+          >
             <button
               type="button"
               data-testid="mode-quick-button"
@@ -132,7 +145,10 @@ export function DeckEditorWorkspace({
             </button>
           </div>
 
-          <div className="flex items-center justify-end gap-2 py-1">
+          <div
+            className="deck-editor-top-row-actions flex items-center justify-end gap-2 py-1"
+            data-testid="editor-history-controls"
+          >
             <Button
               size="sm"
               variant="outline"
@@ -153,34 +169,36 @@ export function DeckEditorWorkspace({
         </div>
 
         <div
-          className="deck-editor-shell-content min-h-0 overflow-y-auto p-3 md:p-4 lg:p-5 xl:p-6"
+          className="deck-editor-shell-content min-h-0 overflow-x-auto overflow-y-auto p-3 md:p-4 lg:p-5 xl:p-6"
           data-testid="editor-content-row"
         >
-          <Suspense
-            fallback={
-              <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-muted-foreground">
-                Loading editor...
-              </div>
-            }
-          >
-            {editorMode === "quick" ? (
-              <QuickEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
-            ) : (
-              <CreativeEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
-            )}
-          </Suspense>
+          <div className="deck-editor-shell-content-inner flex h-full min-h-0 min-w-0 flex-col">
+            <Suspense
+              fallback={
+                <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-muted-foreground">
+                  Loading editor...
+                </div>
+              }
+            >
+              {editorMode === "quick" ? (
+                <QuickEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
+              ) : (
+                <CreativeEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
+              )}
+            </Suspense>
+          </div>
         </div>
 
         <div
           className="deck-editor-side-tray-row border-t border-border bg-muted/20 px-3 md:px-4 py-3"
           data-testid="editor-side-tray-row"
         >
-          <div className="flex flex-wrap items-start gap-3 md:flex-nowrap md:items-center">
+          <div className="deck-editor-side-tray-inner flex w-full flex-wrap items-start gap-3 md:flex-nowrap md:items-center">
             <div className="side-tray-scroll flex-1 overflow-x-auto" data-testid="side-tray">
               <div className="side-tray-strip flex min-w-max items-start gap-3 pr-2">
                 {sortedSides.map((side) => {
                   const isActive = side.index === activeSideIndex;
-                  const traySide = isActive ? sideHistory.present : asSideIR(side.sideIR);
+                  const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);
                   return (
                     <button
                       key={side._id}
@@ -207,7 +225,7 @@ export function DeckEditorWorkspace({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="deck-editor-side-tray-actions flex items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"

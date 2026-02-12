@@ -102,4 +102,3 @@ test.describe("Side template isolation + centered first text", () => {
       .not.toContain(sourceToken);
   });
 });
-

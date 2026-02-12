@@ -40,6 +40,7 @@ import type { FormatState, TextAlignment } from "./lexical/types";
 export type LexicalRichTextEditorApi = {
   applyAlignment: (alignment: TextAlignment) => void;
   toggleList: (listType: "bullet" | "numbered") => void;
+  focus: () => void;
 };
 
 function normalizeSelectionAlignment(value: string | null | undefined): FormatState["alignment"] {
@@ -142,6 +143,9 @@ function EditorApiPlugin({
           undefined,
         );
       },
+      focus: () => {
+        editor.focus();
+      },
     });
 
     return () => {
@@ -161,11 +165,18 @@ function scrollOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
 
   const target = candidates.find((node) => node.scrollHeight > node.clientHeight + 1);
   if (!target) return;
+  const maxScrollTop = target.scrollHeight - target.clientHeight;
+  if (maxScrollTop <= 1) return;
 
-  if (!event.nativeEvent.isTrusted) {
-    event.preventDefault();
-    target.scrollTop += event.deltaY;
-  }
+  const deltaY = event.deltaY;
+  if (deltaY === 0) return;
+
+  const atTop = target.scrollTop <= 1;
+  const atBottom = target.scrollTop >= maxScrollTop - 1;
+  if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
+
+  event.preventDefault();
+  target.scrollTop = Math.min(maxScrollTop, Math.max(0, target.scrollTop + deltaY));
   event.stopPropagation();
 }
 
@@ -242,7 +253,7 @@ function getEditableClassName(isInline: boolean, isPanelScrollable: boolean) {
   }
 
   if (isPanelScrollable) {
-    return "h-[clamp(400px,52vh,520px)] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words p-4 text-base leading-[1.45]";
+    return "remora-lexical-panel-scroll overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words p-4 text-base leading-[1.45]";
   }
 
   return "min-h-[230px] p-4 text-base leading-[1.45]";
@@ -322,6 +333,7 @@ export function LexicalRichTextEditor({
         className={cn(
           "rounded-lg border border-input bg-background",
           isInline ? "flex h-full w-full min-h-0 flex-col overflow-hidden" : "overflow-hidden",
+          isPanelScrollable ? "flex min-h-0 flex-col" : "",
           !showToolbar && isInline ? "rounded-none border-0 bg-transparent shadow-none" : "",
           className,
         )}

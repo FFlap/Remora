@@ -23,15 +23,15 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { LexicalRichTextView } from "@/features/cards/components/LexicalRichTextView";
-import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
-import type { SideOperation } from "../side-ir/ops";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideModelDefaults";
+import type { SideOperation } from "../side-model/ops";
 import type {
   CreativeTransform,
   RichTextBlock,
   SideElement,
-  SideIR,
+  SideModel,
   StrokePath,
-} from "../side-ir/types";
+} from "../side-model/types";
 import {
   applyInsightSelectionStyle,
   buildActiveSelectionSnapshot,
@@ -77,13 +77,13 @@ import type {
 import { LexicalRichTextEditor, type LexicalRichTextEditorApi } from "./LexicalRichTextEditor";
 import { AlignmentDropdown } from "./lexical/alignment-controls";
 
-// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideIR updates.
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideModel updates.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Creative editor interaction flow is intentionally cohesive until hook extraction is complete.
 export function CreativeEditor({
   side,
   onApply,
 }: {
-  side: SideIR;
+  side: SideModel;
   onApply: (
     operations: SideOperation[],
     meta?: {
@@ -577,7 +577,7 @@ export function CreativeEditor({
       const usableHeight = Math.min(usableHeightFromViewport, usableHeightFromContent);
       const scaleFromWidth = usableWidth / Math.max(1, cardOuterWidth);
       const scaleFromHeight = usableHeight / Math.max(1, cardOuterHeight);
-      const nextScale = Math.max(0.48, Math.min(1, scaleFromWidth, scaleFromHeight));
+      const nextScale = Math.max(0.15, Math.min(1, scaleFromWidth, scaleFromHeight));
       setStageScale((current) => (Math.abs(current - nextScale) < 0.01 ? current : nextScale));
     };
 
@@ -1110,6 +1110,15 @@ export function CreativeEditor({
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Preserves selection continuity across Fabric transient selection events.
     const onSelectionChanged = (event: unknown) => {
       if (isHydratingCanvasRef.current) return;
+      const nativeTarget = event?.e?.target;
+      const isCanvasPointerEvent =
+        typeof Node !== "undefined" &&
+        nativeTarget instanceof Node &&
+        (canvas.upperCanvasEl?.contains(nativeTarget) ||
+          canvas.lowerCanvasEl?.contains(nativeTarget));
+      if (editingRichTextId && event?.e && !isCanvasPointerEvent) {
+        return;
+      }
       if (isActiveSelectionTarget(event?.target)) {
         const snapshot = buildActiveSelectionSnapshot(event.target, side.elements);
         if (snapshot) {
@@ -1505,7 +1514,7 @@ export function CreativeEditor({
   const showContextMenu = contextMenu !== null && contextMenuElement !== null;
 
   return (
-    <div className="relative flex min-h-full flex-col gap-3 pr-14 md:pr-16">
+    <div className="relative flex h-full min-h-0 flex-col gap-3 pr-12 lg:pr-16">
       <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center">
         <div className="pointer-events-auto inline-flex flex-col items-center gap-1 rounded-xl border border-border bg-background p-1.5">
           <Button
@@ -1750,7 +1759,10 @@ export function CreativeEditor({
                 className="h-8 w-8"
                 title="Bullet List"
                 disabled={!canApplyTextStyle}
-                onClick={() => inlineEditorApiRef.current?.toggleList("bullet")}
+                onClick={() => {
+                  inlineEditorApiRef.current?.toggleList("bullet");
+                  inlineEditorApiRef.current?.focus();
+                }}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -1761,7 +1773,10 @@ export function CreativeEditor({
                 className="h-8 w-8"
                 title="Numbered List"
                 disabled={!canApplyTextStyle}
-                onClick={() => inlineEditorApiRef.current?.toggleList("numbered")}
+                onClick={() => {
+                  inlineEditorApiRef.current?.toggleList("numbered");
+                  inlineEditorApiRef.current?.focus();
+                }}
               >
                 <ListOrdered className="h-4 w-4" />
               </Button>
@@ -1809,7 +1824,10 @@ export function CreativeEditor({
                 value={selectedAlignment}
                 disabled={!canApplyTextStyle}
                 triggerClassName="h-8 w-8"
-                onChange={(next) => inlineEditorApiRef.current?.applyAlignment(next)}
+                onChange={(next) => {
+                  inlineEditorApiRef.current?.applyAlignment(next);
+                  inlineEditorApiRef.current?.focus();
+                }}
               />
 
               <label className="relative block h-8 w-8 overflow-hidden rounded border border-border">
@@ -1857,12 +1875,13 @@ export function CreativeEditor({
       </div>
 
       <div
-        className="mx-auto flex min-h-0 w-full max-w-[1040px] flex-1 items-center"
+        className="mx-auto flex min-h-0 w-full max-w-[980px] flex-1 items-center pb-2"
         data-testid="creative-card-stage"
       >
         <div
           ref={stageViewportRef}
-          className="flex h-full w-full items-center justify-center overflow-hidden"
+          className="creative-stage-viewport flex h-full min-h-0 w-full"
+          data-testid="creative-stage-viewport"
         >
           <div
             className="origin-top"

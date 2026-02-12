@@ -16,6 +16,7 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Scenario intentionally verifies selection state across multiple editor transitions.
 test.describe("Creative inline selection persistence", () => {
   test("keeps Fabric selection active while typing in inline rich text edit mode", async ({
     page,

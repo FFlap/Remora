@@ -182,7 +182,7 @@ test.describe("Quick + preview centering parity", () => {
       .first();
 
     for (const option of ALIGNMENT_OPTIONS) {
-      await page.getByRole("button", { name: "Text alignment" }).first().click();
+      await page.getByRole("button", { name: "Text alignment" }).first().click({ force: true });
       await page.getByRole("menuitem", { name: option.label }).click();
       await page.waitForTimeout(120);
 

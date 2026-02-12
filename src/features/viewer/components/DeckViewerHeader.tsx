@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react";
 import { UserButton } from "@clerk/tanstack-react-start";
 import { ArrowLeft } from "lucide-react";
+import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { ShareDeckDialog } from "@/features/sharing/ShareDeckDialog";
 import type { ViewerGrantedData } from "@/features/viewer/hooks/viewerTypes";

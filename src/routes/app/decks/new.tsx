@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +37,9 @@ function NewDeckPage() {
             {hydrated ? "yes" : "no"}
           </div>
           <div className="space-y-2">
-            <label htmlFor="new-deck-title" className="text-sm font-medium">Title</label>
+            <label htmlFor="new-deck-title" className="text-sm font-medium">
+              Title
+            </label>
             <Input
               id="new-deck-title"
               value={title}
@@ -46,7 +48,9 @@ function NewDeckPage() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="new-deck-description" className="text-sm font-medium">Description</label>
+            <label htmlFor="new-deck-description" className="text-sm font-medium">
+              Description
+            </label>
             <Textarea
               id="new-deck-description"
               value={description}

@@ -19,12 +19,16 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Preview Longtext Consistency ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Parity checks for sidebar/quick/creative previews");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Parity checks for sidebar/quick/creative previews");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
-function readProjection(locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>): Promise<ProjectionEntry[]> {
+function readProjection(
+  locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
+): Promise<ProjectionEntry[]> {
   return locator.evaluate((node) =>
     Array.from(node.querySelectorAll(":scope > div.absolute")).map((element) => {
       const wrapper = element as HTMLElement;
@@ -44,24 +48,28 @@ function readCreativeProjection(
   locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
 ): Promise<ProjectionEntry[]> {
   return locator.evaluate((node) =>
-    Array.from(node.querySelectorAll('[data-testid^="creative-richtext-static-"]')).map((element) => {
-      const wrapper = element as HTMLElement;
-      return {
-        left: wrapper.style.left,
-        top: wrapper.style.top,
-        width: wrapper.style.width,
-        height: wrapper.style.height,
-        transform: wrapper.style.transform,
-        textContent: wrapper.innerText.replace(/\s+/g, " ").trim(),
-      };
-    }),
+    Array.from(node.querySelectorAll('[data-testid^="creative-richtext-static-"]')).map(
+      (element) => {
+        const wrapper = element as HTMLElement;
+        return {
+          left: wrapper.style.left,
+          top: wrapper.style.top,
+          width: wrapper.style.width,
+          height: wrapper.style.height,
+          transform: wrapper.style.transform,
+          textContent: wrapper.innerText.replace(/\s+/g, " ").trim(),
+        };
+      },
+    ),
   );
 }
 
 async function verifyOverflowScroll(
   richTextLocator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
 ): Promise<void> {
-  const overflow = await richTextLocator.evaluate((node) => node.scrollHeight > node.clientHeight + 1);
+  const overflow = await richTextLocator.evaluate(
+    (node) => node.scrollHeight > node.clientHeight + 1,
+  );
   expect(overflow).toBeTruthy();
   const delta = await richTextLocator.evaluate((node) => {
     const before = node.scrollTop;
@@ -125,7 +133,10 @@ async function verifyCreativeParity(
   quickProjection: ProjectionEntry[],
 ) {
   await page.getByTestId("mode-creative-button").click();
-  const creativeShellContent = page.getByTestId("creative-card-shell").locator(":scope > div").first();
+  const creativeShellContent = page
+    .getByTestId("creative-card-shell")
+    .locator(":scope > div")
+    .first();
   await expect(creativeShellContent).toBeVisible();
 
   const creativeRichTexts = page.locator(
@@ -134,8 +145,8 @@ async function verifyCreativeParity(
   await expect(creativeRichTexts.first()).toContainText(expectedSnippet);
   expect(await creativeRichTexts.count()).toBeGreaterThan(0);
 
-  const creativeOverflowCount = await creativeRichTexts.evaluateAll((nodes) =>
-    nodes.filter((node) => node.scrollHeight > node.clientHeight + 1).length,
+  const creativeOverflowCount = await creativeRichTexts.evaluateAll(
+    (nodes) => nodes.filter((node) => node.scrollHeight > node.clientHeight + 1).length,
   );
   if (creativeOverflowCount > 0) {
     const creativeScrollDelta = await creativeRichTexts.evaluateAll((nodes) => {
@@ -163,10 +174,15 @@ async function verifyCreativeParity(
 }
 
 test.describe("Long text preview consistency", () => {
-  test("keeps sidebar, quick, and creative preview rendering aligned with overflow scrolling", async ({ page }) => {
+  test("keeps sidebar, quick, and creative preview rendering aligned with overflow scrolling", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
     const expectedSnippet = CONSISTENCY_LONG_TEXT.slice(0, 24);
-    const { quickContent, quickRichText, sidebarContent, sidebarRichText } = await prepareLongText(page, expectedSnippet);
+    const { quickContent, quickRichText, sidebarContent, sidebarRichText } = await prepareLongText(
+      page,
+      expectedSnippet,
+    );
     const quickProjection = await verifyQuickAndSidebarParity(
       quickContent,
       quickRichText,

@@ -1,12 +1,11 @@
-import type { ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  SignInButton,
-  SignUpButton,
   SignedIn,
   SignedOut,
+  SignInButton,
+  SignUpButton,
   UserButton,
 } from "@clerk/tanstack-react-start";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
@@ -19,6 +18,7 @@ import {
   Search,
   Upload,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -51,16 +51,28 @@ function Home() {
             <span className="text-sm font-bold uppercase tracking-[0.05em]">Remora</span>
           </div>
           <nav className="hidden items-center gap-10 md:flex">
-            <a className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black" href="#platform">
+            <a
+              className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black"
+              href="#platform"
+            >
               Platform
             </a>
-            <a className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black" href="#resources">
+            <a
+              className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black"
+              href="#resources"
+            >
               Resources
             </a>
-            <a className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black" href="#pricing">
+            <a
+              className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black"
+              href="#pricing"
+            >
               Prices
             </a>
-            <a className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black" href="#blog">
+            <a
+              className="text-[13px] font-medium text-[#666666] transition-colors hover:text-black"
+              href="#blog"
+            >
               Blog
             </a>
           </nav>
@@ -84,7 +96,10 @@ function Home() {
               </SignUpButton>
             </SignedOut>
             <SignedIn>
-              <Link to="/app/decks" className="rounded-lg px-4 py-2 text-[13px] font-medium transition-colors hover:bg-gray-50">
+              <Link
+                to="/app/decks"
+                className="rounded-lg px-4 py-2 text-[13px] font-medium transition-colors hover:bg-gray-50"
+              >
                 Open app
               </Link>
               <UserButton />
@@ -105,8 +120,8 @@ function Home() {
               The Art of Intelligent Studying.
             </h1>
             <p className="mb-12 max-w-2xl text-xl font-normal leading-relaxed text-[#666666]">
-              Go beyond rote memorization. Our intuitive platform helps you transform complex ideas into
-              beautiful, creative flashcards that stick.
+              Go beyond rote memorization. Our intuitive platform helps you transform complex ideas
+              into beautiful, creative flashcards that stick.
             </p>
             <div className="mb-24 flex w-full flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
@@ -188,7 +203,9 @@ function Home() {
                 </div>
                 <div className="text-left">
                   <div className="text-[14px] font-bold text-gray-900">Advanced Biology</div>
-                  <div className="text-[10px] uppercase tracking-tight text-gray-400">12 Sub-sections • 142 Cards</div>
+                  <div className="text-[10px] uppercase tracking-tight text-gray-400">
+                    12 Sub-sections • 142 Cards
+                  </div>
                 </div>
               </div>
             </div>
@@ -202,10 +219,15 @@ function Home() {
               description="Instantly turn complex readings into structured knowledge. Highlight text within your materials, and our AI generates high-fidelity flashcards in real-time, preserving the scientific context."
               visual={
                 <div className="landing-soft-shadow w-[380px] space-y-4 rounded-3xl border border-gray-100 bg-white p-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Source Snippet</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                    Source Snippet
+                  </p>
                   <p className="text-[13px] leading-relaxed text-gray-800">
-                    The <mark className="rounded bg-blue-100 px-0.5 font-medium text-blue-700">mitochondrion</mark> is
-                    a double-membrane-bound organelle.
+                    The{" "}
+                    <mark className="rounded bg-blue-100 px-0.5 font-medium text-blue-700">
+                      mitochondrion
+                    </mark>{" "}
+                    is a double-membrane-bound organelle.
                   </p>
                   <div className="rounded-2xl border-l-4 border-l-blue-500 bg-gray-50 p-4">
                     <h4 className="text-sm font-bold text-gray-900">Mitochondria</h4>
@@ -251,7 +273,9 @@ function Home() {
                 <div className="landing-soft-shadow w-[420px] rounded-3xl border border-gray-100 bg-white p-8 text-left">
                   <div className="mb-8 flex items-center justify-between">
                     <h4 className="text-lg font-bold">The Human Heart</h4>
-                    <span className="text-xs font-bold uppercase tracking-widest text-blue-500">Active Review</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-blue-500">
+                      Active Review
+                    </span>
                   </div>
                   <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/50">
                     <HeartPulse className="h-48 w-48 text-red-200" />
@@ -296,18 +320,36 @@ function Home() {
                   <span className="text-xs text-gray-400">Search activity...</span>
                 </div>
               </div>
-              <ActivityRow icon={<BookOpen className="h-5 w-5 text-blue-500" />} title="Quantum Mechanics" meta="12 Cards Generated • 15m ago" metric="+42 XP" />
-              <ActivityRow icon={<FileText className="h-5 w-5 text-purple-500" />} title="Cardiology Basics" meta="Flashcard Review • 2h ago" metric="92% Recall" />
-              <ActivityRow icon={<HeartPulse className="h-5 w-5 text-pink-500" />} title="Organic Chemistry II" meta="New Deck Formed • 5h ago" metric="80% Mastered" />
+              <ActivityRow
+                icon={<BookOpen className="h-5 w-5 text-blue-500" />}
+                title="Quantum Mechanics"
+                meta="12 Cards Generated • 15m ago"
+                metric="+42 XP"
+              />
+              <ActivityRow
+                icon={<FileText className="h-5 w-5 text-purple-500" />}
+                title="Cardiology Basics"
+                meta="Flashcard Review • 2h ago"
+                metric="92% Recall"
+              />
+              <ActivityRow
+                icon={<HeartPulse className="h-5 w-5 text-pink-500" />}
+                title="Organic Chemistry II"
+                meta="New Deck Formed • 5h ago"
+                metric="80% Mastered"
+              />
             </div>
           </div>
         </section>
 
         <section id="blog" className="relative overflow-hidden bg-white px-10 py-48 text-center">
           <div className="relative z-10 mx-auto max-w-3xl">
-            <h2 className="mb-10 text-6xl font-bold tracking-tight text-gray-900">Elevate your study.</h2>
+            <h2 className="mb-10 text-6xl font-bold tracking-tight text-gray-900">
+              Elevate your study.
+            </h2>
             <p className="mb-12 text-xl font-light text-[#666666]">
-              Join the most selective circle of learners worldwide who value design and performance equally.
+              Join the most selective circle of learners worldwide who value design and performance
+              equally.
             </p>
             <SignedOut>
               <SignUpButton mode="modal">
@@ -370,12 +412,22 @@ function Home() {
           </div>
         </div>
         <div className="mx-auto mt-24 flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-gray-50 pt-10 md:flex-row">
-          <p className="text-[12px] tracking-wider text-gray-400">© {currentYear} Remora Laboratory. Designed for excellence.</p>
+          <p className="text-[12px] tracking-wider text-gray-400">
+            © {currentYear} Remora Laboratory. Designed for excellence.
+          </p>
           <div className="flex gap-8">
-            <a className="text-gray-400 transition-colors hover:text-black" href="https://remora.app" aria-label="Website">
+            <a
+              className="text-gray-400 transition-colors hover:text-black"
+              href="https://remora.app"
+              aria-label="Website"
+            >
               <Globe className="h-5 w-5" />
             </a>
-            <a className="text-gray-400 transition-colors hover:text-black" href="mailto:support@remora.app" aria-label="Email">
+            <a
+              className="text-gray-400 transition-colors hover:text-black"
+              href="mailto:support@remora.app"
+              aria-label="Email"
+            >
               <Mail className="h-5 w-5" />
             </a>
           </div>
@@ -397,7 +449,9 @@ function FeatureBlock({
   reverse?: boolean;
 }) {
   return (
-    <div className={`flex flex-col items-center gap-16 md:gap-32 ${reverse ? "md:flex-row-reverse" : "md:flex-row"}`}>
+    <div
+      className={`flex flex-col items-center gap-16 md:gap-32 ${reverse ? "md:flex-row-reverse" : "md:flex-row"}`}
+    >
       <div className="relative flex flex-1 items-center justify-center">
         <div className="landing-dotted-pattern absolute inset-0 opacity-10" />
         <div className="relative z-10">{visual}</div>
@@ -424,7 +478,9 @@ function ActivityRow({
   return (
     <div className="flex items-center justify-between p-6 transition-colors hover:bg-gray-50">
       <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50">{icon}</div>
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-50">
+          {icon}
+        </div>
         <div className="text-left">
           <p className="text-sm font-bold">{title}</p>
           <p className="text-[11px] uppercase text-gray-400">{meta}</p>
@@ -444,9 +500,15 @@ function FooterColumn({
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-900">{title}</span>
+      <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-900">
+        {title}
+      </span>
       {links.map((link) => (
-        <a key={link.label} className="text-[13px] text-gray-500 transition-colors hover:text-black" href={link.href}>
+        <a
+          key={link.label}
+          className="text-[13px] text-gray-500 transition-colors hover:text-black"
+          href={link.href}
+        >
           {link.label}
         </a>
       ))}

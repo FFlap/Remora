@@ -72,22 +72,20 @@ async function sampleCardPreviewText(
   }
 }
 
-async function readUniqueSidebarCardIds(page: Parameters<typeof test>[0]["page"]) {
-  return page
-    .locator('[data-testid^="card-sidebar-preview-"]')
-    .evaluateAll((nodes) => {
-      const ids: string[] = [];
-      for (const node of nodes) {
-        const raw = node.getAttribute("data-testid");
-        if (!raw) continue;
-        const id = raw.replace("card-sidebar-preview-", "");
-        if (!id) continue;
-        if (!ids.includes(id)) {
-          ids.push(id);
-        }
+function readUniqueSidebarCardIds(page: Parameters<typeof test>[0]["page"]) {
+  return page.locator('[data-testid^="card-sidebar-preview-"]').evaluateAll((nodes) => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+      const raw = node.getAttribute("data-testid");
+      if (!raw) continue;
+      const id = raw.replace("card-sidebar-preview-", "");
+      if (!id) continue;
+      if (!ids.includes(id)) {
+        ids.push(id);
       }
-      return ids;
-    });
+    }
+    return ids;
+  });
 }
 
 async function selectCardFromSidebar(page: Parameters<typeof test>[0]["page"], cardId: string) {
@@ -138,12 +136,12 @@ test.describe("Sidebar active preview switch regression", () => {
     await expect
       .poll(
         async () =>
-          ((await page.getByTestId(`card-sidebar-preview-${firstCardId}`).textContent()) ?? "").includes(
-            cardOneToken,
-          ) &&
-          ((await page.getByTestId(`card-sidebar-preview-${secondCardId}`).textContent()) ?? "").includes(
-            cardTwoToken,
-          ),
+          (
+            (await page.getByTestId(`card-sidebar-preview-${firstCardId}`).textContent()) ?? ""
+          ).includes(cardOneToken) &&
+          (
+            (await page.getByTestId(`card-sidebar-preview-${secondCardId}`).textContent()) ?? ""
+          ).includes(cardTwoToken),
         { timeout: 22000 },
       )
       .toBeTruthy();

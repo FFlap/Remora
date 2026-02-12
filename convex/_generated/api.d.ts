@@ -16,7 +16,7 @@ import type * as decks from "../decks.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
-import type * as lib_sideIR from "../lib/sideIR.js";
+import type * as lib_sideModel from "../lib/sideModel.js";
 import type * as sections from "../sections.js";
 import type * as users from "../users.js";
 
@@ -35,7 +35,7 @@ declare const fullApi: ApiFromModules<{
   "lib/access": typeof lib_access;
   "lib/auth": typeof lib_auth;
   "lib/constants": typeof lib_constants;
-  "lib/sideIR": typeof lib_sideIR;
+  "lib/sideModel": typeof lib_sideModel;
   sections: typeof sections;
   users: typeof users;
 }>;

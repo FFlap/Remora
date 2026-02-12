@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useState } from "react";
 import type { SidebarContextMenuState } from "@/features/decks/components/editor/sidebar/types";
 
 export function useSidebarContextMenu() {
@@ -28,12 +23,7 @@ export function useSidebarContextMenu() {
   );
 
   const openCardContextMenu = useCallback(
-    (
-      event: ReactMouseEvent<HTMLElement>,
-      sectionId: string,
-      cardId: string,
-      cardIndex: number,
-    ) => {
+    (event: ReactMouseEvent<HTMLElement>, sectionId: string, cardId: string, cardIndex: number) => {
       event.preventDefault();
       event.stopPropagation();
       setContextMenu({

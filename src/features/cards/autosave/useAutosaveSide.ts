@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SideIR } from "../side-ir/types";
+import type { SideModel } from "../side-model/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -74,13 +74,13 @@ export function useAutosaveSide({
   sideIndex: number;
   sideId?: string;
   sideIdentityKey?: string;
-  side: SideIR;
+  side: SideModel;
   mode: "quick" | "creative";
   onSave: (params: {
     cardId: string;
     index: number;
     sideId?: string;
-    sideIR: SideIR;
+    sideModel: SideModel;
     lastEditedMode: "quick" | "creative";
   }) => Promise<unknown>;
 }) {
@@ -100,10 +100,16 @@ export function useAutosaveSide({
 
   const enqueueSave = useCallback(
     async (snapshot: string, trackState: boolean) => {
+      let didSave = false;
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Queued save pipeline short-circuits stale side keys and updates save state atomically.
       saveQueueRef.current = saveQueueRef.current.then(async () => {
-        if (snapshot === lastSaved.current) return;
+        if (snapshot === lastSaved.current) {
+          didSave = true;
+          return;
+        }
         const saveKey = sideKey;
         if (sideKeyRef.current !== saveKey) {
+          didSave = true;
           return;
         }
         startSaveState({
@@ -117,18 +123,20 @@ export function useAutosaveSide({
           if (sideKeyRef.current !== saveKey) {
             return;
           }
-          const parsed = JSON.parse(snapshot) as SideIR;
+          const parsed = JSON.parse(snapshot) as SideModel;
           await onSave({
             cardId,
             index: sideIndex,
             sideId,
-            sideIR: parsed,
+            sideModel: parsed,
             lastEditedMode: mode,
           });
           if (sideKeyRef.current !== saveKey) {
+            didSave = true;
             return;
           }
           lastSaved.current = snapshot;
+          didSave = true;
           completeSaveState({
             snapshot,
             trackState,
@@ -151,15 +159,31 @@ export function useAutosaveSide({
       });
 
       await saveQueueRef.current;
+      return didSave;
     },
     [cardId, mode, onSave, sideId, sideIndex, sideKey],
   );
 
   const persist = useCallback(async () => {
-    let snapshot = pending.current;
-    while (snapshot !== lastSaved.current) {
-      await enqueueSave(snapshot, true);
-      snapshot = pending.current;
+    const snapshot = pending.current;
+    if (snapshot === lastSaved.current) {
+      if (mountedRef.current) {
+        setState("saved");
+      }
+      return;
+    }
+
+    const didSave = await enqueueSave(snapshot, true);
+    if (!didSave) {
+      return;
+    }
+
+    if (pending.current !== lastSaved.current) {
+      await enqueueSave(pending.current, true);
+    }
+
+    if (mountedRef.current && pending.current === lastSaved.current) {
+      setState("saved");
     }
   }, [enqueueSave]);
 
@@ -187,6 +211,10 @@ export function useAutosaveSide({
 
   useEffect(() => {
     pending.current = JSON.stringify(side);
+    if (pending.current !== lastSaved.current && mountedRef.current) {
+      setState("saving");
+      setLastError(null);
+    }
 
     if (timeoutRef.current) {
       window.clearTimeout(timeoutRef.current);

@@ -1,6 +1,6 @@
 import { PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { SideElement, SideIR, StrokePath } from "@/features/cards/side-ir/types";
+import type { SideElement, SideModel, StrokePath } from "@/features/cards/side-model/types";
 import { cn } from "@/lib/utils";
 import { LexicalRichTextView } from "./LexicalRichTextView";
 
@@ -90,7 +90,7 @@ function asRenderableStrokePath(element: SideElement): StrokePath | null {
   };
 }
 
-function sortedElements(side: SideIR) {
+function sortedElements(side: SideModel) {
   return [...side.elements].sort((a, b) => (a.quick.order ?? 0) - (b.quick.order ?? 0));
 }
 
@@ -102,7 +102,7 @@ export function SideCardPreview({
   dataTestId,
   ariaHidden = false,
 }: {
-  side: SideIR;
+  side: SideModel;
   className?: string;
   compact?: boolean;
   dataTestId?: string;

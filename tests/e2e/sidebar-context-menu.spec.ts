@@ -36,7 +36,10 @@ test.describe("Sidebar context menu", () => {
   test("renames and deletes a section from section right-click menu", async ({ page }) => {
     await createDeckAndOpenEditor(page);
 
-    await page.getByRole("button", { name: /section/i }).first().click();
+    await page
+      .getByRole("button", { name: /section/i })
+      .first()
+      .click();
     await expect(page.getByText("Section 2").first()).toBeVisible();
 
     const renamedTitle = `Renamed Section ${Date.now()}`;

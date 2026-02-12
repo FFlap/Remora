@@ -8,8 +8,8 @@ import {
   useSaveSide,
 } from "@/features/cards/api/useCardsApi";
 import { useAutosaveSide } from "@/features/cards/autosave/useAutosaveSide";
-import { asSideIR, createDefaultSideIR } from "@/features/cards/side-ir/types";
-import { useSideHistory } from "@/features/cards/side-ir/useSideHistory";
+import { asSideModel, createDefaultSideModel } from "@/features/cards/side-model/types";
+import { useSideHistory } from "@/features/cards/side-model/useSideHistory";
 import { useDeckEditShell } from "@/features/decks/api/useDecksApi";
 import { DeckEditorHeader } from "@/features/decks/components/editor/DeckEditorHeader";
 import { DeckEditorSidebar } from "@/features/decks/components/editor/DeckEditorSidebar";
@@ -40,7 +40,7 @@ export function DeckEditorScreen({
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [activePreviewCardId, setActivePreviewCardId] = useState<string | undefined>(undefined);
   const previousSelectedCardIdRef = useRef<string | undefined>(preselectedCardId);
-  const sideSnapshotRef = useRef(new Map<string, ReturnType<typeof asSideIR>>());
+  const sideSnapshotRef = useRef(new Map<string, ReturnType<typeof asSideModel>>());
 
   const selectedCardData = useEditorCard(selectedCardId) as DeckEditorCardData | undefined;
   const {
@@ -67,20 +67,22 @@ export function DeckEditorScreen({
       : undefined;
 
   const sideHistory = useSideHistory(
-    currentSideDoc ? asSideIR(currentSideDoc.sideIR) : createDefaultSideIR(),
+    currentSideDoc ? asSideModel(currentSideDoc.sideModel) : createDefaultSideModel(),
   );
   const lastLoadedSideKeyRef = useRef<string | null>(null);
   const resetSideHistoryRef = useRef(sideHistory.reset);
   const getShellSideForCard = useCallback(
     (cardId: string | undefined) => {
       if (!cardId) {
-        return createDefaultSideIR();
+        return createDefaultSideModel();
       }
 
       const shellCard = data?.sections
         .flatMap((section) => section.cards)
         .find((card) => String(card._id) === cardId);
-      return shellCard?.frontSide ? asSideIR(shellCard.frontSide.sideIR) : createDefaultSideIR();
+      return shellCard?.frontSide
+        ? asSideModel(shellCard.frontSide.sideModel)
+        : createDefaultSideModel();
     },
     [data],
   );
@@ -107,7 +109,7 @@ export function DeckEditorScreen({
 
     if (!selectedCardId) {
       setActivePreviewCardId(undefined);
-      resetSideHistoryRef.current(createDefaultSideIR());
+      resetSideHistoryRef.current(createDefaultSideModel());
       return;
     }
 
@@ -125,14 +127,15 @@ export function DeckEditorScreen({
       return;
     }
 
-    const currentSideKey = `${selectedCardId ?? ""}:${String(currentSideDoc._id)}:${currentSideDoc.index}:${currentSideDoc.updatedAt}`;
+    const currentSideKey = `${selectedCardId ?? ""}:${String(currentSideDoc._id)}:${currentSideDoc.index}`;
     if (lastLoadedSideKeyRef.current === currentSideKey) {
       return;
     }
 
     lastLoadedSideKeyRef.current = currentSideKey;
     const snapshotKey = `${selectedCardId ?? ""}:${String(currentSideDoc._id)}`;
-    const nextSide = sideSnapshotRef.current.get(snapshotKey) ?? asSideIR(currentSideDoc.sideIR);
+    const nextSide =
+      sideSnapshotRef.current.get(snapshotKey) ?? asSideModel(currentSideDoc.sideModel);
     setActiveSideIndex(currentSideDoc.index);
     resetSideHistoryRef.current(nextSide);
     setActivePreviewCardId(selectedCardId);
@@ -151,7 +154,7 @@ export function DeckEditorScreen({
         cardId: payload.cardId as Id<"cards">,
         index: payload.index,
         sideId: payload.sideId as Id<"cardSides"> | undefined,
-        sideIR: payload.sideIR,
+        sideModel: payload.sideModel,
         lastEditedMode: payload.lastEditedMode,
       });
     },
@@ -216,7 +219,7 @@ export function DeckEditorScreen({
             if (selectedSide) {
               const snapshotKey = `${selectedCardId ?? ""}:${String(selectedSide._id)}`;
               const nextSide =
-                sideSnapshotRef.current.get(snapshotKey) ?? asSideIR(selectedSide.sideIR);
+                sideSnapshotRef.current.get(snapshotKey) ?? asSideModel(selectedSide.sideModel);
               resetSideHistoryRef.current(nextSide);
               setActivePreviewCardId(selectedCardId);
             }
@@ -227,7 +230,7 @@ export function DeckEditorScreen({
             await autosave.flush();
             await addSide({ cardId: selectedCard._id });
             lastLoadedSideKeyRef.current = null;
-            resetSideHistoryRef.current(createDefaultSideIR(String(sortedSides.length + 1)));
+            resetSideHistoryRef.current(createDefaultSideModel(String(sortedSides.length + 1)));
             setActivePreviewCardId(selectedCardId);
             setActiveSideIndex(sortedSides.length);
           }}
@@ -251,7 +254,7 @@ export function DeckEditorScreen({
               lastLoadedSideKeyRef.current = null;
               const snapshotKey = `${selectedCardId ?? ""}:${String(fallbackSide._id)}`;
               const nextSide =
-                sideSnapshotRef.current.get(snapshotKey) ?? asSideIR(fallbackSide.sideIR);
+                sideSnapshotRef.current.get(snapshotKey) ?? asSideModel(fallbackSide.sideModel);
               resetSideHistoryRef.current(nextSide);
               setActivePreviewCardId(selectedCardId);
             }

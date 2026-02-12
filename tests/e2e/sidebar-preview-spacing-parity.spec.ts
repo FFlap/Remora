@@ -9,7 +9,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Sidebar Spacing Parity ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Sidebar preview paragraph spacing parity");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Sidebar preview paragraph spacing parity");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
@@ -57,7 +59,9 @@ function getParagraphMetrics(
     for (const textNode of textNodes) {
       const range = document.createRange();
       range.selectNodeContents(textNode);
-      const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+      const rects = Array.from(range.getClientRects()).filter(
+        (rect) => rect.width > 0 && rect.height > 0,
+      );
       for (const rect of rects) {
         const yPx = rect.top - hostRect.top;
         const existing = lineBands.find((band) => Math.abs(band.yPx - yPx) <= 1.5);
@@ -82,7 +86,9 @@ function getParagraphMetrics(
 }
 
 test.describe("Sidebar preview spacing parity", () => {
-  test("keeps paragraph spacing aligned between quick live preview and sidebar preview", async ({ page }) => {
+  test("keeps paragraph spacing aligned between quick live preview and sidebar preview", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
 
     const quickEditor = page.locator('[contenteditable="true"]').first();
@@ -90,7 +96,9 @@ test.describe("Sidebar preview spacing parity", () => {
     await quickEditor.fill("Para one\n\nPara two\n\nPara three");
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 20000 });
 
-    const quickRichText = page.locator('[data-testid^="quick-live-preview-card-richtext-"]').first();
+    const quickRichText = page
+      .locator('[data-testid^="quick-live-preview-card-richtext-"]')
+      .first();
     await expect(quickRichText).toBeVisible();
     const sidebarRoot = page.locator('[data-testid^="card-sidebar-preview-"] > div').first();
     await expect(sidebarRoot).toBeVisible();
@@ -106,8 +114,12 @@ test.describe("Sidebar preview spacing parity", () => {
     expect(sidebarLines.length).toBeGreaterThanOrEqual(3);
 
     for (let i = 0; i < Math.min(quickLines.length, sidebarLines.length); i += 1) {
-      expect(Math.abs((sidebarLines[i]?.y ?? 0) - (quickLines[i]?.y ?? 0))).toBeLessThanOrEqual(0.01);
-      expect(Math.abs((sidebarLines[i]?.lineHeight ?? 0) - (quickLines[i]?.lineHeight ?? 0))).toBeLessThanOrEqual(0.01);
+      expect(Math.abs((sidebarLines[i]?.y ?? 0) - (quickLines[i]?.y ?? 0))).toBeLessThanOrEqual(
+        0.01,
+      );
+      expect(
+        Math.abs((sidebarLines[i]?.lineHeight ?? 0) - (quickLines[i]?.lineHeight ?? 0)),
+      ).toBeLessThanOrEqual(0.01);
     }
   });
 });

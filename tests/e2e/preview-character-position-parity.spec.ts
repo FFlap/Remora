@@ -20,9 +20,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Preview Character Parity ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill(
-    "Strict parity checks for sidebar, quick, and creative previews",
-  );
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Strict parity checks for sidebar, quick, and creative previews");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
@@ -71,10 +71,7 @@ type LineRow = {
   height: number;
 };
 
-function toLineRows(
-  rects: TextLayoutSignature["rects"],
-  yMergeTolerance = 0.003,
-): LineRow[] {
+function toLineRows(rects: TextLayoutSignature["rects"], yMergeTolerance = 0.003): LineRow[] {
   const sorted = [...rects].sort((a, b) => (a.y === b.y ? a.x - b.x : a.y - b.y));
   const rows: LineRow[] = [];
 
@@ -109,7 +106,9 @@ function expectLineRowsEqual(
     expect(Math.abs((rowsB[i]?.y ?? 0) - (rowsA[i]?.y ?? 0))).toBeLessThanOrEqual(tolerance);
     expect(Math.abs((rowsB[i]?.minX ?? 0) - (rowsA[i]?.minX ?? 0))).toBeLessThanOrEqual(tolerance);
     expect(Math.abs((rowsB[i]?.maxX ?? 0) - (rowsA[i]?.maxX ?? 0))).toBeLessThanOrEqual(tolerance);
-    expect(Math.abs((rowsB[i]?.height ?? 0) - (rowsA[i]?.height ?? 0))).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs((rowsB[i]?.height ?? 0) - (rowsA[i]?.height ?? 0))).toBeLessThanOrEqual(
+      tolerance,
+    );
   }
 }
 
@@ -124,7 +123,9 @@ test.describe("Preview character-position parity", () => {
     await editor.fill(CONSISTENCY_LONG_TEXT);
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 20000 });
 
-    const quickRichText = page.locator('[data-testid^="quick-live-preview-card-richtext-"]').first();
+    const quickRichText = page
+      .locator('[data-testid^="quick-live-preview-card-richtext-"]')
+      .first();
     await expect(quickRichText).toBeVisible();
     const sidebarRoot = page.locator('[data-testid^="card-sidebar-preview-"] > div').first();
     await expect(sidebarRoot).toBeVisible();
@@ -141,7 +142,9 @@ test.describe("Preview character-position parity", () => {
 
     await page.getByTestId("mode-creative-button").click();
     const creativeRichText = page
-      .locator('[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])')
+      .locator(
+        '[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])',
+      )
       .first();
     await expect(creativeRichText).toBeVisible();
 

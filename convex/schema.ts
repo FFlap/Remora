@@ -4,7 +4,7 @@ import {
   accessRequestStatusValidator,
   deckVisibilityValidator,
   editModeValidator,
-  sideIRValidator,
+  sideModelValidator,
 } from "./lib/constants";
 
 export default defineSchema({
@@ -53,7 +53,7 @@ export default defineSchema({
   cardSides: defineTable({
     cardId: v.id("cards"),
     index: v.number(),
-    sideIR: sideIRValidator,
+    sideModel: sideModelValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
   })

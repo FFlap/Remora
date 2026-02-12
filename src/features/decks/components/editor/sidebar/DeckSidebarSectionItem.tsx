@@ -11,7 +11,7 @@ type DeckSidebarSectionItemProps = {
   sectionId: string;
   isCollapsed: boolean;
   selectedCardId?: string;
-  activeSidePreview: import("@/features/cards/side-ir/types").SideIR;
+  activeSidePreview: import("@/features/cards/side-model/types").SideModel;
   activePreviewCardId?: string;
   sensors: ReturnType<typeof useSensors>;
   onToggleCollapsed: (sectionId: string) => void;

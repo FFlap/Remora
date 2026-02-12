@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import type { SideOperation } from "@/features/cards/side-ir/ops";
-import type { SideIR } from "@/features/cards/side-ir/types";
+import type { SideOperation } from "@/features/cards/side-model/ops";
+import type { SideModel } from "@/features/cards/side-model/types";
 
 type SideHistoryLike = {
-  present: SideIR;
+  present: SideModel;
   apply: (
     operations: SideOperation[],
     meta?: {
@@ -20,6 +20,7 @@ type SideHistoryLike = {
 
 export function useSideHistoryShortcuts(sideHistory: SideHistoryLike) {
   useEffect(() => {
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Shortcut guard intentionally handles editable targets, override opt-in, and undo/redo variants.
     const onKeydown = (event: KeyboardEvent) => {
       const target = event.target;
       const targetElement = target instanceof Element ? target : null;

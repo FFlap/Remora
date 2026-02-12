@@ -48,7 +48,7 @@ const sideElementTypeValidator = v.union(
 
 // Canonical side payload validator used at persistence boundaries.
 // Keep lexical payload flexible, while constraining top-level structure.
-export const sideIRValidator = v.object({
+export const sideModelValidator = v.object({
   version: v.literal(1),
   elements: v.array(
     v.object({
@@ -135,7 +135,7 @@ export const cardSideDocValidator = v.object({
   _creationTime: v.number(),
   cardId: v.id("cards"),
   index: v.number(),
-  sideIR: sideIRValidator,
+  sideModel: sideModelValidator,
   createdAt: v.number(),
   updatedAt: v.number(),
 });

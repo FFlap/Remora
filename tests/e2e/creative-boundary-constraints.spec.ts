@@ -44,7 +44,11 @@ test.describe("Creative Boundary Constraints", () => {
     // Try dragging far beyond bottom-right.
     await page.mouse.move(canvasBox.x + 180, canvasBox.y + 150);
     await page.mouse.down();
-    await page.mouse.move(canvasBox.x + canvasBox.width + 420, canvasBox.y + canvasBox.height + 380, { steps: 18 });
+    await page.mouse.move(
+      canvasBox.x + canvasBox.width + 420,
+      canvasBox.y + canvasBox.height + 380,
+      { steps: 18 },
+    );
     await page.mouse.up();
 
     await page.getByTestId("mode-quick-button").click();
@@ -65,7 +69,11 @@ test.describe("Creative Boundary Constraints", () => {
 
     expect(previewTextBounds.x).toBeGreaterThanOrEqual(previewBounds.x - 1);
     expect(previewTextBounds.y).toBeGreaterThanOrEqual(previewBounds.y - 1);
-    expect(previewTextBounds.x + previewTextBounds.width).toBeLessThanOrEqual(previewBounds.x + previewBounds.width + 1);
-    expect(previewTextBounds.y + previewTextBounds.height).toBeLessThanOrEqual(previewBounds.y + previewBounds.height + 1);
+    expect(previewTextBounds.x + previewTextBounds.width).toBeLessThanOrEqual(
+      previewBounds.x + previewBounds.width + 1,
+    );
+    expect(previewTextBounds.y + previewTextBounds.height).toBeLessThanOrEqual(
+      previewBounds.y + previewBounds.height + 1,
+    );
   });
 });

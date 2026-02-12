@@ -147,6 +147,7 @@ function ToolbarInsertButtons({
   );
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Toolbar keeps related controls in one render block for deterministic command wiring.
 export function Toolbar({
   formatState,
   onImageInsert,

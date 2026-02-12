@@ -1,4 +1,4 @@
-import type { GenericQueryCtx, GenericMutationCtx } from "convex/server";
+import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import type { DataModel, Doc } from "../_generated/dataModel";
 
 export type ReadCtx = GenericQueryCtx<DataModel>;

@@ -1,15 +1,9 @@
-import type { ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function SortableRow({
-  id,
-  children,
-}: {
-  id: string;
-  children: ReactNode;
-}) {
+export function SortableRow({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   });

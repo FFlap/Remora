@@ -1,18 +1,18 @@
-import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
 import { toast } from "sonner";
-import type { Id } from "@/lib/convexApi";
-import { useDeckForViewer, useUpdateDeckSharing } from "@/features/decks/api/useDecksApi";
 import {
   useMyRequestStatus,
   useRequestAccess,
 } from "@/features/access-requests/api/useAccessRequestsApi";
+import { useDeckForViewer, useUpdateDeckSharing } from "@/features/decks/api/useDecksApi";
 import { DeckViewerAccessGate } from "@/features/viewer/components/DeckViewerAccessGate";
 import { DeckViewerHeader } from "@/features/viewer/components/DeckViewerHeader";
 import { DeckViewerMainPanel } from "@/features/viewer/components/DeckViewerMainPanel";
 import { DeckViewerSidebar } from "@/features/viewer/components/DeckViewerSidebar";
 import { useDeckViewerState } from "@/features/viewer/hooks/useDeckViewerState";
 import type { ViewerSection } from "@/features/viewer/hooks/viewerTypes";
+import type { Id } from "@/lib/convexApi";
 
 type DeckSharingPayload = {
   deckId: string;
@@ -33,9 +33,7 @@ export function DeckViewerScreen({
   const requestAccess = useRequestAccess();
 
   const shouldLoadRequestStatus =
-    data !== undefined &&
-    data.access !== "granted" &&
-    data.access !== "private";
+    data !== undefined && data.access !== "granted" && data.access !== "private";
   const myRequestStatus = useMyRequestStatus(shouldLoadRequestStatus ? deckId : undefined);
 
   const viewerSections =
@@ -118,7 +116,7 @@ export function DeckViewerScreen({
           sideIndex={viewerState.sideIndex}
           sideCount={viewerState.sideCount}
           sortedSides={viewerState.sortedSides}
-          selectedSideIR={viewerState.selectedSideIR}
+          selectedSideModel={viewerState.selectedSideModel}
           selectedSideKey={viewerState.selectedSide?.index}
           activeSidePosition={viewerState.activeSidePosition}
           orderedCardIndex={viewerState.orderedCardIndex}

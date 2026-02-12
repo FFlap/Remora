@@ -1,5 +1,5 @@
-import type { RichTextBlock } from "@/features/cards/side-ir/types";
-import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../../shared/sideIRDefaults";
+import type { RichTextBlock } from "@/features/cards/side-model/types";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../../shared/sideModelDefaults";
 
 type BlockAlignment = "left" | "center" | "right" | "justify";
 

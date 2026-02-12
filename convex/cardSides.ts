@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { cardSideDocValidator, editModeValidator, sideIRValidator } from "./lib/constants";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
-import { createDefaultSideIR } from "./lib/sideIR";
+import { cardSideDocValidator, editModeValidator, sideModelValidator } from "./lib/constants";
+import { createDefaultSideModel } from "./lib/sideModel";
 
 export const listByCard = query({
   args: { cardId: v.id("cards") },
@@ -26,7 +26,7 @@ export const saveSide = mutation({
     cardId: v.id("cards"),
     index: v.number(),
     sideId: v.optional(v.id("cardSides")),
-    sideIR: sideIRValidator,
+    sideModel: sideModelValidator,
     lastEditedMode: editModeValidator,
   },
   returns: v.null(),
@@ -57,7 +57,7 @@ export const saveSide = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        sideIR: args.sideIR,
+        sideModel: args.sideModel,
         updatedAt: now,
       });
     } else {
@@ -94,8 +94,7 @@ export const addSide = mutation({
       .withIndex("by_card_index", (q) => q.eq("cardId", args.cardId))
       .collect();
 
-    const insertAfter =
-      args.afterIndex ?? (sides.length > 0 ? sides[sides.length - 1].index : -1);
+    const insertAfter = args.afterIndex ?? (sides.length > 0 ? sides[sides.length - 1].index : -1);
     const targetIndex = insertAfter + 1;
 
     const shiftTargets = [...sides].filter((side) => side.index >= targetIndex);
@@ -112,7 +111,7 @@ export const addSide = mutation({
     await ctx.db.insert("cardSides", {
       cardId: args.cardId,
       index: targetIndex,
-      sideIR: createDefaultSideIR(String(targetIndex + 1)),
+      sideModel: createDefaultSideModel(String(targetIndex + 1)),
       createdAt: now,
       updatedAt: now,
     });

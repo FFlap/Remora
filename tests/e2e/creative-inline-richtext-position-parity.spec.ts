@@ -9,13 +9,17 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Inline Position Deck ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Creative inline rich text position parity");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Creative inline rich text position parity");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
 test.describe("Creative inline rich text position parity", () => {
-  test("keeps inline editor aligned to static rich text bounds on double-click", async ({ page }) => {
+  test("keeps inline editor aligned to static rich text bounds on double-click", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
 
     const quickEditor = page.locator('[contenteditable="true"]').first();
@@ -29,7 +33,9 @@ test.describe("Creative inline rich text position parity", () => {
     await page.getByTestId("creative-tool-select").click();
 
     const staticRichText = page
-      .locator('[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])')
+      .locator(
+        '[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])',
+      )
       .first();
     await expect(staticRichText).toBeVisible();
 
@@ -40,9 +46,7 @@ test.describe("Creative inline rich text position parity", () => {
     const staticTextRect = await staticRichText.evaluate((node) => {
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
         acceptNode(textNode) {
-          return textNode.textContent?.trim()
-            ? NodeFilter.FILTER_ACCEPT
-            : NodeFilter.FILTER_SKIP;
+          return textNode.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         },
       });
       const textNode = walker.nextNode();
@@ -73,9 +77,7 @@ test.describe("Creative inline rich text position parity", () => {
     const inlineTextRect = await inlineEditor.evaluate((node) => {
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
         acceptNode(textNode) {
-          return textNode.textContent?.trim()
-            ? NodeFilter.FILTER_ACCEPT
-            : NodeFilter.FILTER_SKIP;
+          return textNode.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
         },
       });
       const textNode = walker.nextNode();

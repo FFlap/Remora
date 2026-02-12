@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/test";
 import { signInAsOwner } from "./utils/clerkAuth";
 
 test.describe("Insight-like editor parity", () => {
-  test("keeps quick preview and creative canvas aligned with a fixed card viewport", async ({ page }) => {
+  test("keeps quick preview and creative canvas aligned with a fixed card viewport", async ({
+    page,
+  }) => {
     await signInAsOwner(page);
 
     await page.goto("/app/decks/new");

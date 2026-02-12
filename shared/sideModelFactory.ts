@@ -2,10 +2,10 @@ import {
   DEFAULT_CREATIVE_LAYOUT,
   DEFAULT_QUICK_LAYOUT,
   DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
-} from "../../shared/sideIRDefaults";
-import type { SideIR } from "../../shared/sideIRTypes";
+} from "./sideModelDefaults";
+import type { SideModel } from "./sideModelTypes";
 
-export function createDefaultSideIR(seed = "1"): SideIR {
+export function createDefaultSideModel(seed = "1"): SideModel {
   return {
     version: 1,
     elements: [

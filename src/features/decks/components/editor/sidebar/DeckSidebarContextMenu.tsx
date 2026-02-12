@@ -1,7 +1,7 @@
 import { PenSquare, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { SidebarContextMenuState } from "@/features/decks/components/editor/sidebar/types";
+import type { DeckEditShellSection } from "@/features/decks/types/editor";
+import { cn } from "@/lib/utils";
 
 function CardContextMenuActions({
   contextMenu,

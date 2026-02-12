@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { comparePngBuffers } from "./utils/imageDiff";
 import { signInAsOwner } from "./utils/clerkAuth";
+import { comparePngBuffers } from "./utils/imageDiff";
 
 async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"]) {
   await signInAsOwner(page);

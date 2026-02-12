@@ -9,7 +9,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Selection Persist Deck ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Selection should persist after move");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Selection should persist after move");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }

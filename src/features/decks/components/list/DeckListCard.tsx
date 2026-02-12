@@ -66,7 +66,9 @@ export function DeckListCard({
               <DropdownMenuItem onSelect={onEditDetails}>Edit deck details</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
+                disabled={isDeleting}
                 onSelect={() => {
+                  if (isDeleting) return;
                   onDeleteDeck();
                 }}
                 className="text-destructive hover:text-destructive"

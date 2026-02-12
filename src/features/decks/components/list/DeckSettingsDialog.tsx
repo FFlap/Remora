@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { DeckVisibility } from "@/features/decks/hooks/useDeckSettingsDialog";
-import type { RefObject } from "react";
 
 type DeckSettingsDialogProps = {
   open: boolean;

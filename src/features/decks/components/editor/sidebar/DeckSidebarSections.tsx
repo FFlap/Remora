@@ -9,7 +9,7 @@ type DeckSidebarSectionsProps = {
   sections: DeckEditShellSection[];
   sectionIds: Id<"sections">[];
   selectedCardId?: string;
-  activeSidePreview: import("@/features/cards/side-ir/types").SideIR;
+  activeSidePreview: import("@/features/cards/side-model/types").SideModel;
   activePreviewCardId?: string;
   collapsedSections: Record<string, boolean>;
   sensors: ReturnType<typeof useSensors>;

@@ -52,7 +52,9 @@ test.describe("Quick/Create visual parity", () => {
     await page.getByTestId("mode-quick-button").click();
     const quickPreview = page.getByTestId("quick-live-preview-card");
     await expect(quickPreview).toBeVisible({ timeout: 10000 });
-    const quickPreviewContent = quickPreview.locator('[data-testid="quick-live-preview-card-content"]');
+    const quickPreviewContent = quickPreview.locator(
+      '[data-testid="quick-live-preview-card-content"]',
+    );
     await expect(quickPreviewContent).toBeVisible({ timeout: 10000 });
     await expect
       .poll(async () => page.getByTestId("quick-live-preview-card").locator("svg path").count(), {

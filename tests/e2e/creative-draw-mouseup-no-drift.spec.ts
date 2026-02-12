@@ -10,7 +10,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`MouseUp Drift Deck ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Creative draw release stability");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Creative draw release stability");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }

@@ -2,7 +2,7 @@ import { closestCenter, DndContext, type DragEndEvent, type useSensors } from "@
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
-import { asSideIR, type SideIR } from "@/features/cards/side-ir/types";
+import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
 import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
 import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
@@ -12,7 +12,7 @@ type DeckSidebarCardListProps = {
   section: DeckEditShellSection;
   sectionId: string;
   selectedCardId?: string;
-  activeSidePreview: SideIR;
+  activeSidePreview: SideModel;
   activePreviewCardId?: string;
   sensors: ReturnType<typeof useSensors>;
   onCardDragEnd: (
@@ -56,7 +56,9 @@ export function DeckSidebarCardList({
             const cardId = String(card._id);
             const isActive = cardId === selectedCardId;
             const hasLivePreview = isActive && activePreviewCardId === cardId;
-            const side = hasLivePreview ? activeSidePreview : asSideIR(card.frontSide?.sideIR);
+            const side = hasLivePreview
+              ? activeSidePreview
+              : asSideModel(card.frontSide?.sideModel);
 
             return (
               <SortableRow key={card._id} id={cardId}>

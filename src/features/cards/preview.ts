@@ -1,6 +1,6 @@
-import type { RichTextBlock, SideIR } from "./side-ir/types";
+import type { RichTextBlock, SideModel } from "./side-model/types";
 
-export function extractFrontPreview(side: SideIR | undefined) {
+export function extractFrontPreview(side: SideModel | undefined) {
   if (!side) {
     return "Empty side";
   }

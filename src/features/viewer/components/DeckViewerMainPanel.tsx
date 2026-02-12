@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
-import { asSideIR, createDefaultSideIR } from "@/features/cards/side-ir/types";
+import { asSideModel, createDefaultSideModel } from "@/features/cards/side-model/types";
 import type { ViewerCard, ViewerSide } from "@/features/viewer/hooks/viewerTypes";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ type DeckViewerMainPanelProps = {
   sideIndex: number;
   sideCount: number;
   sortedSides: ViewerSide[];
-  selectedSideIR: ReturnType<typeof asSideIR>;
+  selectedSideModel: ReturnType<typeof asSideModel>;
   selectedSideKey?: number;
   activeSidePosition: number;
   orderedCardIndex: number;
@@ -34,7 +34,7 @@ export function DeckViewerMainPanel({
   sideIndex,
   sideCount,
   sortedSides,
-  selectedSideIR,
+  selectedSideModel,
   selectedSideKey,
   activeSidePosition,
   orderedCardIndex,
@@ -46,15 +46,13 @@ export function DeckViewerMainPanel({
   onGoToCard,
 }: DeckViewerMainPanelProps) {
   const frontSide = sortedSides[0]
-    ? asSideIR(sortedSides[0].sideIR)
-    : createDefaultSideIR("viewer-front");
+    ? asSideModel(sortedSides[0].sideModel)
+    : createDefaultSideModel("viewer-front");
   const backSide = sortedSides[1]
-    ? asSideIR(sortedSides[1].sideIR)
-    : createDefaultSideIR("viewer-back");
+    ? asSideModel(sortedSides[1].sideModel)
+    : createDefaultSideModel("viewer-back");
   const flipRatio =
-    frontSide.layout.quickLayout.cardRatio > 0
-      ? frontSide.layout.quickLayout.cardRatio
-      : 1.5;
+    frontSide.layout.quickLayout.cardRatio > 0 ? frontSide.layout.quickLayout.cardRatio : 1.5;
 
   return (
     <main className="deck-viewer-main">
@@ -115,7 +113,7 @@ export function DeckViewerMainPanel({
                 </div>
               ) : (
                 <SideCardPreview
-                  side={selectedSideIR}
+                  side={selectedSideModel}
                   className="deck-viewer-main-card"
                   dataTestId="viewer-main-card-face-front"
                   key={selectedSideKey ?? "empty-side"}
@@ -170,9 +168,7 @@ export function DeckViewerMainPanel({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {sideCount === 2
-                ? "Click card to flip."
-                : "Click card to advance to next side."}
+              {sideCount === 2 ? "Click card to flip." : "Click card to advance to next side."}
             </p>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
+import type { WheelEvent } from "react";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
-import { asSideIR } from "@/features/cards/side-ir/types";
+import { asSideModel } from "@/features/cards/side-model/types";
 import type { ViewerSection } from "@/features/viewer/hooks/viewerTypes";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,22 @@ export function DeckViewerSidebar({
   onSelectCard,
   onToggleSection,
 }: DeckViewerSidebarProps) {
+  const scrollSidebarOnHoverWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const container = event.currentTarget;
+    const deltaY = event.deltaY;
+    if (deltaY === 0) return;
+
+    const maxScrollTop = container.scrollHeight - container.clientHeight;
+    if (maxScrollTop <= 1) return;
+
+    const atTop = container.scrollTop <= 1;
+    const atBottom = container.scrollTop >= maxScrollTop - 1;
+    if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
+
+    event.preventDefault();
+    container.scrollTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + deltaY));
+  };
+
   return (
     <aside className="deck-viewer-sidebar" data-testid="viewer-sidebar">
       <div className="deck-viewer-sidebar-header">
@@ -27,7 +44,11 @@ export function DeckViewerSidebar({
         </h3>
       </div>
 
-      <div className="deck-viewer-sidebar-scroll overflow-y-auto overflow-x-hidden">
+      <div
+        className="deck-viewer-sidebar-scroll overflow-y-auto overflow-x-hidden"
+        data-testid="viewer-sidebar-scroll"
+        onWheelCapture={scrollSidebarOnHoverWheel}
+      >
         <div className="space-y-2">
           {sections.map((section) => {
             const sectionId = String(section._id);
@@ -93,7 +114,7 @@ export function DeckViewerSidebar({
                             {index + 1}
                           </span>
                           <SideCardPreview
-                            side={asSideIR(front?.sideIR)}
+                            side={asSideModel(front?.sideModel)}
                             compact
                             className={cn(
                               "w-full transition-all",

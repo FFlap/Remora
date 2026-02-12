@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, WheelEvent } from "react";
 import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,56 @@ function sanitizeLinkUrl(url: string | undefined): string | null {
 function asScale(scale: number) {
   if (!Number.isFinite(scale) || scale <= 0) return 1;
   return scale;
+}
+
+function isScrollableY(node: HTMLElement) {
+  const style = window.getComputedStyle(node);
+  if (!(style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowY === "overlay")) {
+    return false;
+  }
+  return node.scrollHeight > node.clientHeight + 1;
+}
+
+function findScrollableAncestor(node: HTMLElement | null): HTMLElement | null {
+  let current: HTMLElement | null = node;
+  while (current) {
+    if (isScrollableY(current)) return current;
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function canScrollWithDelta(node: HTMLElement, deltaY: number) {
+  const maxScrollTop = node.scrollHeight - node.clientHeight;
+  if (maxScrollTop <= 1 || deltaY === 0) return false;
+  const atTop = node.scrollTop <= 1;
+  const atBottom = node.scrollTop >= maxScrollTop - 1;
+  if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return false;
+  return true;
+}
+
+function applyWheelScroll(node: HTMLElement, deltaY: number) {
+  const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+  if (maxScrollTop <= 1) return;
+  node.scrollTop = Math.min(maxScrollTop, Math.max(0, node.scrollTop + deltaY));
+}
+
+function scrollOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
+  const node = event.currentTarget;
+  const deltaY = event.deltaY;
+  if (canScrollWithDelta(node, deltaY)) {
+    event.preventDefault();
+    applyWheelScroll(node, deltaY);
+    event.stopPropagation();
+    return;
+  }
+
+  const ancestorScrollable = findScrollableAncestor(node.parentElement);
+  if (ancestorScrollable && canScrollWithDelta(ancestorScrollable, deltaY)) {
+    event.preventDefault();
+    applyWheelScroll(ancestorScrollable, deltaY);
+    event.stopPropagation();
+  }
 }
 
 function applyScaledPx(value: string, scale: number) {
@@ -364,19 +414,7 @@ export function LexicalRichTextView({
       )}
       data-testid={dataTestId}
       style={previewStyle}
-      onWheel={
-        scrollOnHover
-          ? (event) => {
-              const node = event.currentTarget;
-              if (node.scrollHeight <= node.clientHeight + 1) return;
-              if (!event.nativeEvent.isTrusted) {
-                event.preventDefault();
-                node.scrollTop += event.deltaY;
-              }
-              event.stopPropagation();
-            }
-          : undefined
-      }
+      onWheel={scrollOnHover ? scrollOnHoverWheel : undefined}
     >
       <div className={cn("remora-richtext-content", !hasText && "remora-richtext-content-empty")}>
         {hasText ? (

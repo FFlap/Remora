@@ -18,7 +18,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Preview Surface Parity ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Ensure sidebar, quick, creative previews stay aligned");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Ensure sidebar, quick, creative previews stay aligned");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
@@ -104,7 +106,10 @@ test.describe("Preview surface parity", () => {
     await drawReferenceStroke(page);
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
-    const creativeCardContent = page.getByTestId("creative-card-shell").locator(":scope > div").first();
+    const creativeCardContent = page
+      .getByTestId("creative-card-shell")
+      .locator(":scope > div")
+      .first();
     await expect(creativeCardContent).toBeVisible();
     const creativeTextLayer = page.getByTestId("creative-richtext-static-layer");
     await expect(creativeTextLayer).toBeVisible();
@@ -138,7 +143,10 @@ test.describe("Preview surface parity", () => {
     await page.getByTestId("mode-creative-button").click();
     const creativeCardShell = page.getByTestId("creative-card-shell");
     await expect(creativeCardShell).toBeVisible({ timeout: 10000 });
-    const creativeBuffer = await creativeCardShell.locator(":scope > div").first().screenshot({ type: "png" });
+    const creativeBuffer = await creativeCardShell
+      .locator(":scope > div")
+      .first()
+      .screenshot({ type: "png" });
 
     const quickVsSidebar = comparePngBuffers(quickBuffer, sidebarBuffer, {
       width: 520,
@@ -164,10 +172,18 @@ test.describe("Preview surface parity", () => {
     expect(sidebarVsCreative.diffRatio).toBeLessThan(0.14);
 
     if (quickVsCreative.aInkBounds && quickVsCreative.bInkBounds) {
-      expect(Math.abs(quickVsCreative.aInkBounds.minX - quickVsCreative.bInkBounds.minX)).toBeLessThan(12);
-      expect(Math.abs(quickVsCreative.aInkBounds.maxX - quickVsCreative.bInkBounds.maxX)).toBeLessThan(12);
-      expect(Math.abs(quickVsCreative.aInkBounds.minY - quickVsCreative.bInkBounds.minY)).toBeLessThan(12);
-      expect(Math.abs(quickVsCreative.aInkBounds.maxY - quickVsCreative.bInkBounds.maxY)).toBeLessThan(12);
+      expect(
+        Math.abs(quickVsCreative.aInkBounds.minX - quickVsCreative.bInkBounds.minX),
+      ).toBeLessThan(12);
+      expect(
+        Math.abs(quickVsCreative.aInkBounds.maxX - quickVsCreative.bInkBounds.maxX),
+      ).toBeLessThan(12);
+      expect(
+        Math.abs(quickVsCreative.aInkBounds.minY - quickVsCreative.bInkBounds.minY),
+      ).toBeLessThan(12);
+      expect(
+        Math.abs(quickVsCreative.aInkBounds.maxY - quickVsCreative.bInkBounds.maxY),
+      ).toBeLessThan(12);
     }
   });
 });

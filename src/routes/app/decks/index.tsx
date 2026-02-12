@@ -1,11 +1,19 @@
-import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useDeleteDeck, useMyDecks, useUpdateDeckMeta, useUpdateDeckSharing } from "@/features/decks/api/useDecksApi";
+import {
+  useDeleteDeck,
+  useMyDecks,
+  useUpdateDeckMeta,
+  useUpdateDeckSharing,
+} from "@/features/decks/api/useDecksApi";
 import { DeckListGrid } from "@/features/decks/components/list/DeckListGrid";
 import { DeckListHeader } from "@/features/decks/components/list/DeckListHeader";
 import { DeckSettingsDialog } from "@/features/decks/components/list/DeckSettingsDialog";
-import { useDeckSettingsDialog, type DeckListItem } from "@/features/decks/hooks/useDeckSettingsDialog";
+import {
+  type DeckListItem,
+  useDeckSettingsDialog,
+} from "@/features/decks/hooks/useDeckSettingsDialog";
 
 export const Route = createFileRoute("/app/decks/")({
   component: DeckListPage,

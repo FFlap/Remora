@@ -1,8 +1,8 @@
 import {
   DEFAULT_CREATIVE_LAYOUT,
   DEFAULT_QUICK_LAYOUT,
-  DEFAULT_RICHTEXT_CREATIVE_BOUNDS,
-} from "../../../../shared/sideIRDefaults";
+} from "../../../../shared/sideModelDefaults";
+import { createDefaultSideModel } from "../../../../shared/sideModelFactory";
 import type {
   BaseElement,
   CreativeLayout,
@@ -13,9 +13,9 @@ import type {
   QuickLayout,
   RichTextBlock,
   SideElement,
-  SideIR,
+  SideModel,
   StrokePath,
-} from "../../../../shared/sideIRTypes";
+} from "../../../../shared/sideModelTypes";
 
 export type {
   BaseElement,
@@ -27,58 +27,10 @@ export type {
   QuickLayout,
   RichTextBlock,
   SideElement,
-  SideIR,
+  SideModel,
   StrokePath,
 };
-
-export function createDefaultSideIR(seed = "1"): SideIR {
-  return {
-    version: 1,
-    elements: [
-      {
-        id: `rich-${seed}`,
-        type: "richText",
-        lexical: {
-          root: {
-            children: [
-              {
-                children: [
-                  {
-                    detail: 0,
-                    format: 0,
-                    mode: "normal",
-                    style: "",
-                    text: "",
-                    type: "text",
-                    version: 1,
-                  },
-                ],
-                direction: null,
-                format: "center",
-                indent: 0,
-                type: "paragraph",
-                version: 1,
-                textFormat: 0,
-                textStyle: "",
-              },
-            ],
-            direction: null,
-            format: "",
-            indent: 0,
-            type: "root",
-            version: 1,
-          },
-        },
-        quick: { order: 0 },
-        creative: { ...DEFAULT_RICHTEXT_CREATIVE_BOUNDS },
-      },
-    ],
-    layout: {
-      quickLayout: { ...DEFAULT_QUICK_LAYOUT },
-      creativeLayout: { ...DEFAULT_CREATIVE_LAYOUT },
-    },
-  };
-}
+export { createDefaultSideModel };
 
 function asPositiveNumber(value: unknown, fallback: number) {
   if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
@@ -87,7 +39,7 @@ function asPositiveNumber(value: unknown, fallback: number) {
   return value;
 }
 
-function normalizeLayout(layout: unknown): SideIR["layout"] {
+function normalizeLayout(layout: unknown): SideModel["layout"] {
   const raw = (layout ?? {}) as {
     quickLayout?: Partial<QuickLayout>;
     creativeLayout?: Partial<CreativeLayout>;
@@ -156,14 +108,14 @@ function isValidElement(element: unknown): element is SideElement {
   }
 }
 
-export function asSideIR(value: unknown): SideIR {
+export function asSideModel(value: unknown): SideModel {
   if (!value || typeof value !== "object") {
-    return createDefaultSideIR();
+    return createDefaultSideModel();
   }
 
-  const maybe = value as Partial<SideIR>;
+  const maybe = value as Partial<SideModel>;
   if (maybe.version !== 1 || !Array.isArray(maybe.elements)) {
-    return createDefaultSideIR();
+    return createDefaultSideModel();
   }
 
   return {

@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: Parity matrix covers many content/alignment combinations in a single reusable fixture.
 import { expect, test } from "@playwright/test";
 import { signInAsOwner } from "./utils/clerkAuth";
 
@@ -272,6 +273,7 @@ async function applyModeAndAlignment(
   await page.getByRole("menuitem", { name: labelByAlignment[alignment] }).click();
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Static snapshot captures block/list metrics used across all parity cases.
 async function captureStaticSnapshot(page: Parameters<typeof test>[0]["page"]) {
   const staticRichText = page
     .locator(
@@ -279,6 +281,7 @@ async function captureStaticSnapshot(page: Parameters<typeof test>[0]["page"]) {
     )
     .first();
   await expect(staticRichText).toBeVisible({ timeout: 12000 });
+  // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Browser-side extractor normalizes text/list geometry in one pass for stable comparisons.
   return staticRichText.evaluate((node) => {
     const normalizeText = (value: string) =>
       value
@@ -400,9 +403,11 @@ async function captureStaticSnapshot(page: Parameters<typeof test>[0]["page"]) {
   }) as Promise<SurfaceSnapshot | null>;
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Inline snapshot mirrors static extractor to avoid cross-surface drift in assertions.
 async function captureInlineSnapshot(page: Parameters<typeof test>[0]["page"]) {
   const inlineRoot = page.getByTestId("creative-inline-richtext-editor");
   await expect(inlineRoot).toBeVisible({ timeout: 12000 });
+  // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Browser-side extractor keeps inline metrics equivalent to static capture logic.
   return inlineRoot.evaluate((node) => {
     const normalizeText = (value: string) =>
       value
@@ -535,6 +540,7 @@ function expectClose(actual: number | null, expected: number | null, tolerance =
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Parity comparison walks nested list/paragraph metrics and glyph offsets.
 function assertSnapshotParity(staticSnapshot: SurfaceSnapshot, inlineSnapshot: SurfaceSnapshot) {
   expect(inlineSnapshot.blocks).toHaveLength(staticSnapshot.blocks.length);
   for (let index = 0; index < staticSnapshot.blocks.length; index += 1) {
@@ -621,5 +627,78 @@ test.describe("Creative inline double-click preview parity", () => {
         page.off("console", onConsole);
       }
     });
+  }
+});
+
+test("creative inline toolbar list + alignment flow does not emit invalid indent errors", async ({
+  page,
+}) => {
+  const consoleErrors: string[] = [];
+  const onConsole = (message: { type: () => string; text: () => string }) => {
+    if (message.type() === "error") {
+      consoleErrors.push(message.text());
+    }
+  };
+  page.on("console", onConsole);
+  try {
+    await createDeckAndOpenEditor(page);
+    await openInlineByToolbar(page);
+
+    const inlineEditable = page
+      .getByTestId("creative-inline-richtext-editor")
+      .locator('[contenteditable="true"]')
+      .first();
+    const expectInlineSelectionToStayActive = async () => {
+      await expect(inlineEditable).toBeVisible({ timeout: 12000 });
+      await expect
+        .poll(
+          async () =>
+            inlineEditable.evaluate((node) => {
+              const selection = window.getSelection();
+              if (!selection || selection.rangeCount === 0) return false;
+              const anchorNode = selection.anchorNode;
+              const focusNode = selection.focusNode;
+              return Boolean(
+                anchorNode && focusNode && node.contains(anchorNode) && node.contains(focusNode),
+              );
+            }),
+          { timeout: 4000 },
+        )
+        .toBeTruthy();
+    };
+
+    await inlineEditable.click({ force: true });
+    await page.keyboard.insertText("creative bullet item one");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("creative bullet item two");
+    await page.keyboard.press("Enter");
+    await page.keyboard.insertText("creative bullet item three");
+
+    const toolbar = page.getByTestId("creative-richtext-toolbar-row");
+    await inlineEditable.click({ force: true });
+    await page.keyboard.press(`${MODIFIER_KEY}+A`);
+    await toolbar.locator('button[title="Bullet List"]').first().click();
+    await expectInlineSelectionToStayActive();
+    await inlineEditable.click({ force: true });
+    await page.keyboard.press(`${MODIFIER_KEY}+A`);
+    await toolbar.getByRole("button", { name: "Text alignment" }).click();
+    await page.getByRole("menuitem", { name: "Right" }).click();
+    await expectInlineSelectionToStayActive();
+    await inlineEditable.click({ force: true });
+    await page.keyboard.press(`${MODIFIER_KEY}+A`);
+    await toolbar.locator('button[title="Numbered List"]').first().click();
+    await expectInlineSelectionToStayActive();
+    await inlineEditable.click({ force: true });
+    await page.keyboard.press(`${MODIFIER_KEY}+A`);
+    await toolbar.getByRole("button", { name: "Text alignment" }).click();
+    await page.getByRole("menuitem", { name: "Center" }).click();
+    await expectInlineSelectionToStayActive();
+
+    await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({
+      timeout: 20000,
+    });
+    expect(consoleErrors.some((message) => /invalid indent value/i.test(message))).toBeFalsy();
+  } finally {
+    page.off("console", onConsole);
   }
 });

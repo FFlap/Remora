@@ -1,9 +1,15 @@
 import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideIRDefaults";
-import type { SideOperation } from "../side-ir/ops";
-import type { EmbedBlock, ImageBlock, RichTextBlock, SideElement, SideIR } from "../side-ir/types";
+import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideModelDefaults";
+import type { SideOperation } from "../side-model/ops";
+import type {
+  EmbedBlock,
+  ImageBlock,
+  RichTextBlock,
+  SideElement,
+  SideModel,
+} from "../side-model/types";
 import { QuickEditorContent } from "./quick/QuickEditorContent";
 
 function normalizeHttpUrl(url: string) {
@@ -99,7 +105,7 @@ export function QuickEditor({
   side,
   onApply,
 }: {
-  side: SideIR;
+  side: SideModel;
   onApply: (
     operations: SideOperation[],
     meta?: {

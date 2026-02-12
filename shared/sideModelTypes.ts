@@ -62,7 +62,7 @@ export type CreativeLayout = {
   padding: number;
 };
 
-export type SideIR = {
+export type SideModel = {
   version: 1;
   elements: SideElement[];
   layout: {

@@ -9,7 +9,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Preview Scroll Deck ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Preview rich text hover scroll");
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Preview rich text hover scroll");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
@@ -20,11 +22,16 @@ test.describe("Preview rich text hover scroll", () => {
 
     const quickEditor = page.locator('[contenteditable="true"]').first();
     await quickEditor.click();
-    const longLines = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} preview overflow token`).join("\n");
+    const longLines = Array.from(
+      { length: 40 },
+      (_, i) => `Line ${i + 1} preview overflow token`,
+    ).join("\n");
     await quickEditor.fill(longLines);
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
-    const previewRichText = page.locator('[data-testid^="quick-live-preview-card-richtext-"]').first();
+    const previewRichText = page
+      .locator('[data-testid^="quick-live-preview-card-richtext-"]')
+      .first();
     await expect(previewRichText).toBeVisible();
 
     const hasOverflow = await previewRichText.evaluate(

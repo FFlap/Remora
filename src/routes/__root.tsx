@@ -1,18 +1,18 @@
 /// <reference types="vite/client" />
-import type { ReactNode } from "react";
+
+import { ClerkProvider, useAuth } from "@clerk/tanstack-react-start";
+import type { ConvexQueryClient } from "@convex-dev/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import {
-  Outlet,
   createRootRouteWithContext,
   HeadContent,
+  Outlet,
   Scripts,
+  useRouteContext,
 } from "@tanstack/react-router";
-import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { useAuth } from "@clerk/tanstack-react-start";
-import { useRouteContext } from "@tanstack/react-router";
-import type { QueryClient } from "@tanstack/react-query";
 import type { ConvexReactClient } from "convex/react";
-import type { ConvexQueryClient } from "@convex-dev/react-query";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import appCss from "@/styles/app.css?url";
 

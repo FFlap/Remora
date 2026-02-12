@@ -39,11 +39,9 @@ test.describe("Sidebar full-card drag", () => {
 
     await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(
-      secondBox.x + secondBox.width / 2,
-      secondBox.y + secondBox.height + 24,
-      { steps: 24 },
-    );
+    await page.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height + 24, {
+      steps: 24,
+    });
     await page.mouse.up();
 
     await expect

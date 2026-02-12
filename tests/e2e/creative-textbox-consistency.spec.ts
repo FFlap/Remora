@@ -9,15 +9,19 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   );
 
   await page.getByPlaceholder("Biology Midterm").fill(`Creative Textbox Consistency ${Date.now()}`);
-  await page.getByPlaceholder("Cells, mitosis, and genetics").fill(
-    "Ensure creative textboxes stay selected through add/move/double-click edit",
-  );
+  await page
+    .getByPlaceholder("Cells, mitosis, and genetics")
+    .fill("Ensure creative textboxes stay selected through add/move/double-click edit");
   await page.getByRole("button", { name: "Create Deck" }).click();
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: End-to-end interaction sequence is kept contiguous to preserve stateful canvas steps.
 test.describe("Creative textbox consistency", () => {
-  test("keeps textboxes selected and editable across add, move, and double-click", async ({ page }) => {
+  // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Drag/select/edit assertions intentionally run as one deterministic scenario.
+  test("keeps textboxes selected and editable across add, move, and double-click", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
 
     await page.getByTestId("mode-creative-button").click();
@@ -56,7 +60,10 @@ test.describe("Creative textbox consistency", () => {
         window as Window & {
           __remoraCreativeCanvas?: {
             getActiveObject?: () => {
-              getBoundingRect?: (absolute?: boolean, calculate?: boolean) => {
+              getBoundingRect?: (
+                absolute?: boolean,
+                calculate?: boolean,
+              ) => {
                 left: number;
                 top: number;
                 width: number;
@@ -103,7 +110,10 @@ test.describe("Creative textbox consistency", () => {
         window as Window & {
           __remoraCreativeCanvas?: {
             getActiveObject?: () => {
-              getBoundingRect?: (absolute?: boolean, calculate?: boolean) => {
+              getBoundingRect?: (
+                absolute?: boolean,
+                calculate?: boolean,
+              ) => {
                 left: number;
                 top: number;
                 width: number;
@@ -128,7 +138,10 @@ test.describe("Creative textbox consistency", () => {
     expect(afterMove).not.toBeNull();
     if (!afterMove) return;
 
-    const movedDistance = Math.hypot(afterMove.left - beforeMove.left, afterMove.top - beforeMove.top);
+    const movedDistance = Math.hypot(
+      afterMove.left - beforeMove.left,
+      afterMove.top - beforeMove.top,
+    );
     expect(movedDistance).toBeGreaterThan(20);
   });
 });

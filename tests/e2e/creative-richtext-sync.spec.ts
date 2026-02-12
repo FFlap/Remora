@@ -15,14 +15,18 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
 }
 
 test.describe("Creative + Quick Rich Text Sync", () => {
-  test("syncs rich text both ways, supports creative text boxes, and erases strokes", async ({ page }) => {
+  test("syncs rich text both ways, supports creative text boxes, and erases strokes", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
 
     const quickEditor = page.locator('[contenteditable="true"]').first();
     await quickEditor.click();
     await page.keyboard.type("Quick to Creative Sync");
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId("quick-live-preview-card")).toContainText("Quick to Creative Sync");
+    await expect(page.getByTestId("quick-live-preview-card")).toContainText(
+      "Quick to Creative Sync",
+    );
 
     await page.getByTestId("mode-creative-button").click();
     const creativeCanvas = page.getByTestId("creative-card-canvas");
@@ -52,8 +56,12 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     await expect(page.getByTestId("creative-inline-richtext-editor")).toBeVisible();
 
     await page.getByTestId("mode-quick-button").click();
-    await expect(page.locator('[contenteditable="true"]').first()).toContainText("Quick to Creative Sync + Creative");
-    await expect(page.getByTestId("quick-live-preview-card")).toContainText("Quick to Creative Sync + Creative");
+    await expect(page.locator('[contenteditable="true"]').first()).toContainText(
+      "Quick to Creative Sync + Creative",
+    );
+    await expect(page.getByTestId("quick-live-preview-card")).toContainText(
+      "Quick to Creative Sync + Creative",
+    );
     await expect(page.getByRole("button", { name: "Text 2" })).toBeVisible();
 
     await page.getByTestId("mode-creative-button").click();

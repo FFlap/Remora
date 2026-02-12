@@ -1,6 +1,6 @@
-import { util } from "fabric";
 import type { ActiveSelection, Path } from "fabric";
-import type { SideElement, StrokePath } from "@/features/cards/side-ir/types";
+import { util } from "fabric";
+import type { SideElement, StrokePath } from "@/features/cards/side-model/types";
 import {
   INSIGHT_SELECTION_COLOR,
   INSIGHT_SELECTION_FILL,
@@ -168,7 +168,9 @@ export function elementTransformFromObject(object: CanvasObject): CreativeTransf
 export function isSizeChangingTransformAction(action: unknown) {
   if (typeof action !== "string") return false;
   const normalized = action.toLowerCase();
-  return normalized.includes("scale") || normalized.includes("resize") || normalized.includes("skew");
+  return (
+    normalized.includes("scale") || normalized.includes("resize") || normalized.includes("skew")
+  );
 }
 
 export function isActiveSelectionTarget(target: unknown): target is ActiveSelectionTarget {
@@ -313,7 +315,9 @@ export function strokeFromFabricPath(path: Path) {
   const originY = geometry.minY;
   const targetWidth = Math.max(1, geometry.width);
   const targetHeight = Math.max(1, geometry.height);
-  const normalizedPoints = absolutePoints.map(([x, y]) => [x - originX, y - originY] as [number, number]);
+  const normalizedPoints = absolutePoints.map(
+    ([x, y]) => [x - originX, y - originY] as [number, number],
+  );
   const normalizedCommands = normalizePathCommands(transformed, originX, originY, 1, 1);
 
   return {

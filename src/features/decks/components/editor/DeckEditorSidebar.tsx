@@ -1,12 +1,11 @@
-import { useMemo, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMemo, useState, type WheelEvent } from "react";
 import {
   useCreateCard,
   useMoveCardToSection,
   useRemoveCard,
   useReorderCardsInSection,
 } from "@/features/cards/api/useCardsApi";
-import type { SideIR } from "@/features/cards/side-ir/types";
+import type { SideModel } from "@/features/cards/side-model/types";
 import { DeckSidebarContextMenu } from "@/features/decks/components/editor/sidebar/DeckSidebarContextMenu";
 import { DeckSidebarHeader } from "@/features/decks/components/editor/sidebar/DeckSidebarHeader";
 import { DeckSidebarSections } from "@/features/decks/components/editor/sidebar/DeckSidebarSections";
@@ -29,7 +28,7 @@ type DeckEditorSidebarProps = {
   deckId: string;
   data: DeckEditShellData;
   selectedCardId?: string;
-  activeSidePreview: SideIR;
+  activeSidePreview: SideModel;
   activePreviewCardId?: string;
   onBeforeSelectCard?: () => Promise<void>;
   onSelectCard: (cardId: string | undefined) => void | Promise<void>;
@@ -110,11 +109,43 @@ export function DeckEditorSidebar({
     }));
   };
 
+  const scrollSidebarOnHoverWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const container = event.currentTarget;
+    const deltaY = event.deltaY;
+    if (deltaY === 0) return;
+
+    const target = event.target as HTMLElement | null;
+    const nestedScrollHost = target?.closest(".remora-preview-scroll") as HTMLElement | null;
+    if (nestedScrollHost && nestedScrollHost !== container) {
+      const nestedMax = nestedScrollHost.scrollHeight - nestedScrollHost.clientHeight;
+      if (nestedMax > 1) {
+        const nestedAtTop = nestedScrollHost.scrollTop <= 1;
+        const nestedAtBottom = nestedScrollHost.scrollTop >= nestedMax - 1;
+        if ((deltaY < 0 && !nestedAtTop) || (deltaY > 0 && !nestedAtBottom)) {
+          return;
+        }
+      }
+    }
+
+    const maxScrollTop = container.scrollHeight - container.clientHeight;
+    if (maxScrollTop <= 1) return;
+    const atTop = container.scrollTop <= 1;
+    const atBottom = container.scrollTop >= maxScrollTop - 1;
+    if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
+
+    event.preventDefault();
+    container.scrollTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + deltaY));
+  };
+
   return (
     <aside className="deck-editor-sidebar h-full border-r border-border bg-background flex flex-col flex-shrink-0">
       <DeckSidebarHeader onCreateSection={createSectionWithCard} />
 
-      <ScrollArea className="h-full p-2">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2"
+        data-testid="deck-sidebar-scroll"
+        onWheelCapture={scrollSidebarOnHoverWheel}
+      >
         <DeckSidebarSections
           sections={data.sections}
           sectionIds={sectionIds}
@@ -130,7 +161,7 @@ export function DeckEditorSidebar({
           onCardContextMenu={openCardContextMenu}
           onToggleCollapsed={toggleSectionCollapsed}
         />
-      </ScrollArea>
+      </div>
 
       <DeckSidebarContextMenu
         contextMenu={contextMenu}

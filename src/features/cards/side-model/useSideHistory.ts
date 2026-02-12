@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { applyOperations, type SideOperation } from "./ops";
-import type { SideIR } from "./types";
+import type { SideModel } from "./types";
 
 type Source = "quick" | "creative" | "system";
 
@@ -18,7 +18,7 @@ const DEFAULT_COALESCE_MS: Record<Source, number> = {
   system: 0,
 };
 
-export function useSideHistory(initial: SideIR) {
+export function useSideHistory(initial: SideModel) {
   const [present, setPresent] = useState(initial);
   const [undoStack, setUndoStack] = useState<HistoryEntry[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryEntry[]>([]);
@@ -32,7 +32,7 @@ export function useSideHistory(initial: SideIR) {
       canUndo,
       canRedo,
       setPresent,
-      reset(next: SideIR) {
+      reset(next: SideModel) {
         setPresent(next);
         setUndoStack([]);
         setRedoStack([]);

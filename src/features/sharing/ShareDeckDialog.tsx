@@ -12,7 +12,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ShareDeckAccessRequestsPanel } from "@/features/sharing/ShareDeckAccessRequestsPanel";
-import { useShareDeckDialogState, type ShareDeckVisibility } from "@/features/sharing/useShareDeckDialogState";
+import {
+  type ShareDeckVisibility,
+  useShareDeckDialogState,
+} from "@/features/sharing/useShareDeckDialogState";
 import type { Doc } from "@/lib/convexApi";
 
 const visibilityOptions = ["public", "unlisted", "private", "whitelist"] as const;

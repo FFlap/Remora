@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { Id } from "@/lib/convexApi";
 import { useDeckViewerAccessRequest } from "@/features/viewer/hooks/useDeckViewerAccessRequest";
 import type { ViewerDeniedData } from "@/features/viewer/hooks/viewerTypes";
+import type { Id } from "@/lib/convexApi";
 
 type RequestAccessMutation = (args: { deckId: Id<"decks">; message?: string }) => Promise<unknown>;
 
@@ -23,13 +23,8 @@ export function DeckViewerAccessGate({
   requestStatus,
   requestAccess,
 }: DeckViewerAccessGateProps) {
-  const {
-    requestMessage,
-    setRequestMessage,
-    requestError,
-    requestingAccess,
-    submitRequest,
-  } = useDeckViewerAccessRequest(deckId, requestAccess);
+  const { requestMessage, setRequestMessage, requestError, requestingAccess, submitRequest } =
+    useDeckViewerAccessRequest(deckId, requestAccess);
 
   const isRequestable = data.access === "whitelist_requestable" || requestStatus === "rejected";
   const isPending = data.access === "whitelist_pending" || requestStatus === "pending";
@@ -73,9 +68,7 @@ export function DeckViewerAccessGate({
                 <Button disabled={requestingAccess} onClick={() => void submitRequest()}>
                   {requestingAccess ? "Requesting..." : "Request access"}
                 </Button>
-                {requestError ? (
-                  <p className="text-xs text-destructive">{requestError}</p>
-                ) : null}
+                {requestError ? <p className="text-xs text-destructive">{requestError}</p> : null}
               </div>
             </SignedIn>
           ) : null}

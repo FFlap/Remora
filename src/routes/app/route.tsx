@@ -1,10 +1,5 @@
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/tanstack-react-start";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-} from "@clerk/tanstack-react-start";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/app")({
@@ -42,7 +37,10 @@ function AppLayout() {
                   <Link to="/" className="text-xl font-semibold tracking-tight">
                     Remora
                   </Link>
-                  <Link to="/app/decks" className="text-sm text-muted-foreground hover:text-foreground">
+                  <Link
+                    to="/app/decks"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
                     Decks
                   </Link>
                 </nav>
