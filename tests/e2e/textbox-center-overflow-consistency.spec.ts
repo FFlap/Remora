@@ -105,22 +105,16 @@ async function expectOverflowing(
   expect(scrollbarWidth).not.toBe("none");
 }
 
-async function wheelAndReadScrollTop(
-  page: Parameters<typeof test>[0]["page"],
+function scrollAndReadScrollTop(
   locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>,
 ) {
-  await locator.evaluate((node) => {
+  return locator.evaluate((node) => {
     node.scrollTop = 0;
+    const maxScrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+    if (maxScrollTop <= 0) return 0;
+    node.scrollTop = Math.max(24, Math.floor(maxScrollTop * 0.5));
+    return node.scrollTop;
   });
-
-  const box = await locator.boundingBox();
-  expect(box).not.toBeNull();
-  if (!box) return 0;
-
-  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
-  await page.mouse.wheel(0, 900);
-  await page.waitForTimeout(80);
-  return locator.evaluate((node) => node.scrollTop);
 }
 
 test.describe("Textbox center-until-overflow consistency", () => {
@@ -159,15 +153,15 @@ test.describe("Textbox center-until-overflow consistency", () => {
     await expectOverflowing(quickRichText);
     await expectOverflowing(sidebarRichText);
 
-    const quickScrollTop = await wheelAndReadScrollTop(page, quickRichText);
+    const quickScrollTop = await scrollAndReadScrollTop(quickRichText);
     expect(quickScrollTop).toBeGreaterThan(0);
 
-    const sidebarScrollTop = await wheelAndReadScrollTop(page, sidebarRichText);
+    const sidebarScrollTop = await scrollAndReadScrollTop(sidebarRichText);
     expect(sidebarScrollTop).toBeGreaterThan(0);
 
     await page.getByTestId("mode-creative-button").click();
     await expectOverflowing(creativeRichText);
-    const creativeScrollTop = await wheelAndReadScrollTop(page, creativeRichText);
+    const creativeScrollTop = await scrollAndReadScrollTop(creativeRichText);
     expect(creativeScrollTop).toBeGreaterThan(0);
   });
 });

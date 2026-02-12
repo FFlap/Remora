@@ -59,8 +59,12 @@ async function expectQuickPreviewFullyVisibleOrScrollable(
   await expect(previewCard).toBeVisible();
 
   const metrics = await page.evaluate(() => {
-    const stage = document.querySelector('[data-testid="editor-content-row"]') as HTMLElement | null;
-    const card = document.querySelector('[data-testid="quick-live-preview-card"]') as HTMLElement | null;
+    const stage = document.querySelector(
+      '[data-testid="editor-content-row"]',
+    ) as HTMLElement | null;
+    const card = document.querySelector(
+      '[data-testid="quick-live-preview-card"]',
+    ) as HTMLElement | null;
     if (!stage || !card) return null;
 
     const stageRect = stage.getBoundingClientRect();
@@ -87,7 +91,9 @@ async function expectQuickPreviewFullyVisibleOrScrollable(
   expect(metrics).not.toBeNull();
   if (!metrics) return;
 
-  expect(metrics.fullyVisible || (metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd)).toBeTruthy();
+  expect(
+    metrics.fullyVisible || (metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd),
+  ).toBeTruthy();
 }
 
 async function expectPanelVisibleOrReachableViaEditorScroll(
@@ -95,7 +101,9 @@ async function expectPanelVisibleOrReachableViaEditorScroll(
 ) {
   await expect(panel).toBeVisible();
   const metrics = await panel.evaluate((node) => {
-    const contentRow = document.querySelector('[data-testid="editor-content-row"]') as HTMLElement | null;
+    const contentRow = document.querySelector(
+      '[data-testid="editor-content-row"]',
+    ) as HTMLElement | null;
     if (!contentRow) return null;
     const rowRect = contentRow.getBoundingClientRect();
 
@@ -122,7 +130,9 @@ async function expectPanelVisibleOrReachableViaEditorScroll(
   expect(metrics).not.toBeNull();
   if (!metrics) return;
 
-  expect(metrics.fullyVisible || (metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd)).toBeTruthy();
+  expect(
+    metrics.fullyVisible || (metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd),
+  ).toBeTruthy();
 }
 
 function boxesOverlap(
@@ -268,9 +278,9 @@ test.describe("Bottom side tray row layout", () => {
       const trayBox = await trayRow.boundingBox();
       if (!inputBox || !previewBox || !trayBox) continue;
 
-      const layoutMode = await page.getByTestId("quick-editor-surface-grid").getAttribute(
-        "data-layout",
-      );
+      const layoutMode = await page
+        .getByTestId("quick-editor-surface-grid")
+        .getAttribute("data-layout");
       expect(layoutMode).not.toBeNull();
 
       if (layoutMode === "split") {

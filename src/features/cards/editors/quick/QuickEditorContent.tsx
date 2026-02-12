@@ -81,6 +81,103 @@ function parseAspectRatio(value: string | null | undefined) {
   return numerator / denominator;
 }
 
+function resolveCardAspect(previewCard: HTMLElement | null, fallbackCardRatio: number) {
+  return (
+    parseAspectRatio(previewCard ? getComputedStyle(previewCard).aspectRatio : undefined) ??
+    (fallbackCardRatio > 0 ? fallbackCardRatio : 1.5)
+  );
+}
+
+function resolveEditorContentRow(surface: HTMLElement, current: HTMLElement | null) {
+  if (current?.isConnected) {
+    return current;
+  }
+  return surface.closest('[data-testid="editor-content-row"]') as HTMLElement | null;
+}
+
+function getAvailableSplitSize(surface: HTMLElement, editorContentRow: HTMLElement | null) {
+  if (!editorContentRow) {
+    return {
+      width: surface.clientWidth,
+      height: surface.clientHeight,
+    };
+  }
+
+  const surfaceRect = surface.getBoundingClientRect();
+  const contentRect = editorContentRow.getBoundingClientRect();
+  const horizontalInsetsPx =
+    Math.max(0, surfaceRect.left - contentRect.left) +
+    Math.max(0, contentRect.right - surfaceRect.right);
+  const verticalInsetsPx =
+    Math.max(0, surfaceRect.top - contentRect.top) +
+    Math.max(0, contentRect.bottom - surfaceRect.bottom);
+  return {
+    width: Math.max(0, editorContentRow.clientWidth - horizontalInsetsPx),
+    height: Math.max(0, editorContentRow.clientHeight - verticalInsetsPx),
+  };
+}
+
+function getSplitFitMetrics({
+  surface,
+  previewPanel,
+  previewStage,
+  cardAspect,
+  availableSplitWidth,
+}: {
+  surface: HTMLElement;
+  previewPanel: HTMLElement;
+  previewStage: HTMLElement;
+  cardAspect: number;
+  availableSplitWidth: number;
+}) {
+  const surfaceStyle = getComputedStyle(surface);
+  const gapPx = parsePx(surfaceStyle.columnGap) || parsePx(surfaceStyle.gap);
+  const fitWidth = Math.max(1, Math.min(surface.clientWidth, availableSplitWidth));
+  const splitTotalWidth = Math.max(1, fitWidth - gapPx);
+  const splitPreviewWidth =
+    splitTotalWidth *
+    (QUICK_SPLIT_PREVIEW_FRACTION / (QUICK_SPLIT_INPUT_FRACTION + QUICK_SPLIT_PREVIEW_FRACTION));
+  const splitInputWidth =
+    Math.max(1, fitWidth - gapPx) *
+    (QUICK_SPLIT_INPUT_FRACTION / (QUICK_SPLIT_INPUT_FRACTION + QUICK_SPLIT_PREVIEW_FRACTION));
+  const requiredCardHeight = splitPreviewWidth / Math.max(0.01, cardAspect);
+  const panelChromeHeight = Math.max(0, previewPanel.offsetHeight - previewStage.clientHeight);
+  return {
+    splitInputWidth,
+    splitPreviewWidth,
+    requiredPreviewPanelHeight: requiredCardHeight + panelChromeHeight,
+  };
+}
+
+function getNextLayoutMode({
+  current,
+  splitInputWidth,
+  splitPreviewWidth,
+  requiredPreviewPanelHeight,
+  availableSplitHeight,
+}: {
+  current: QuickLayoutMode;
+  splitInputWidth: number;
+  splitPreviewWidth: number;
+  requiredPreviewPanelHeight: number;
+  availableSplitHeight: number;
+}): QuickLayoutMode {
+  const shouldStackByWidth =
+    splitInputWidth < MIN_SPLIT_INPUT_WIDTH_PX || splitPreviewWidth < MIN_SPLIT_PREVIEW_WIDTH_PX;
+  const canUnstackByWidth =
+    splitInputWidth >= MIN_SPLIT_INPUT_WIDTH_PX + UNSTACK_INPUT_WIDTH_BUFFER_PX &&
+    splitPreviewWidth >= MIN_SPLIT_PREVIEW_WIDTH_PX + UNSTACK_PREVIEW_WIDTH_BUFFER_PX;
+  const shouldStackByHeight =
+    requiredPreviewPanelHeight > availableSplitHeight - STACK_ENTER_BUFFER_PX;
+  const canUnstackByHeight =
+    requiredPreviewPanelHeight <= availableSplitHeight - STACK_EXIT_BUFFER_PX;
+
+  if (current === "split") {
+    return shouldStackByWidth || shouldStackByHeight ? "stacked" : "split";
+  }
+  return canUnstackByWidth && canUnstackByHeight ? "split" : "stacked";
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Quick panel composes text controls, palette, media fields, and live preview in one surface.
 export function QuickEditorContent({
   side,
@@ -103,12 +200,14 @@ export function QuickEditorContent({
   const editorContentRowRef = useRef<HTMLElement | null>(null);
 
   const resolvePreviewCard = useCallback(() => {
-    if (previewCardRef.current && previewCardRef.current.isConnected) {
+    if (previewCardRef.current?.isConnected) {
       return previewCardRef.current;
     }
     const surface = surfaceRef.current;
     if (!surface) return null;
-    const card = surface.querySelector('[data-testid="quick-live-preview-card"]') as HTMLElement | null;
+    const card = surface.querySelector(
+      '[data-testid="quick-live-preview-card"]',
+    ) as HTMLElement | null;
     previewCardRef.current = card;
     return card;
   }, []);
@@ -119,62 +218,31 @@ export function QuickEditorContent({
     const previewStage = previewStageRef.current;
     if (!surface || !previewPanel || !previewStage) return;
 
-    if (!editorContentRowRef.current || !editorContentRowRef.current.isConnected) {
-      editorContentRowRef.current = surface.closest(
-        '[data-testid="editor-content-row"]',
-      ) as HTMLElement | null;
-    }
-
+    editorContentRowRef.current = resolveEditorContentRow(surface, editorContentRowRef.current);
     const previewCard = resolvePreviewCard();
-    const cardAspect =
-      parseAspectRatio(previewCard ? getComputedStyle(previewCard).aspectRatio : undefined) ??
-      (side.layout.quickLayout.cardRatio > 0 ? side.layout.quickLayout.cardRatio : 1.5);
-
-    const surfaceStyle = getComputedStyle(surface);
-    const gapPx = parsePx(surfaceStyle.columnGap) || parsePx(surfaceStyle.gap);
-    const surfaceRect = surface.getBoundingClientRect();
-    let availableSplitWidth = surface.clientWidth;
-    let availableSplitHeight = surface.clientHeight;
-
-    const editorContentRow = editorContentRowRef.current;
-    if (editorContentRow) {
-      const contentRect = editorContentRow.getBoundingClientRect();
-      const horizontalInsetsPx =
-        Math.max(0, surfaceRect.left - contentRect.left) +
-        Math.max(0, contentRect.right - surfaceRect.right);
-      const verticalInsetsPx =
-        Math.max(0, surfaceRect.top - contentRect.top) +
-        Math.max(0, contentRect.bottom - surfaceRect.bottom);
-      availableSplitWidth = Math.max(0, editorContentRow.clientWidth - horizontalInsetsPx);
-      availableSplitHeight = Math.max(0, editorContentRow.clientHeight - verticalInsetsPx);
-    }
-
-    const fitWidth = Math.max(1, Math.min(surface.clientWidth, availableSplitWidth));
-    const splitTotalWidth = Math.max(1, fitWidth - gapPx);
-    const splitPreviewWidth =
-      splitTotalWidth *
-      (QUICK_SPLIT_PREVIEW_FRACTION / (QUICK_SPLIT_INPUT_FRACTION + QUICK_SPLIT_PREVIEW_FRACTION));
-    const splitInputWidth =
-      Math.max(1, fitWidth - gapPx) *
-      (QUICK_SPLIT_INPUT_FRACTION / (QUICK_SPLIT_INPUT_FRACTION + QUICK_SPLIT_PREVIEW_FRACTION));
-    const requiredCardHeight = splitPreviewWidth / Math.max(0.01, cardAspect);
-    const panelChromeHeight = Math.max(0, previewPanel.offsetHeight - previewStage.clientHeight);
-    const requiredPreviewPanelHeight = requiredCardHeight + panelChromeHeight;
+    const cardAspect = resolveCardAspect(previewCard, side.layout.quickLayout.cardRatio);
+    const { width: availableSplitWidth, height: availableSplitHeight } = getAvailableSplitSize(
+      surface,
+      editorContentRowRef.current,
+    );
     if (availableSplitWidth <= 1 || availableSplitHeight <= 1) return;
 
-    const shouldStackByWidth =
-      splitInputWidth < MIN_SPLIT_INPUT_WIDTH_PX || splitPreviewWidth < MIN_SPLIT_PREVIEW_WIDTH_PX;
-    const canUnstackByWidth =
-      splitInputWidth >= MIN_SPLIT_INPUT_WIDTH_PX + UNSTACK_INPUT_WIDTH_BUFFER_PX &&
-      splitPreviewWidth >= MIN_SPLIT_PREVIEW_WIDTH_PX + UNSTACK_PREVIEW_WIDTH_BUFFER_PX;
-    const shouldStackByHeight = requiredPreviewPanelHeight > availableSplitHeight - STACK_ENTER_BUFFER_PX;
-    const canUnstackByHeight = requiredPreviewPanelHeight <= availableSplitHeight - STACK_EXIT_BUFFER_PX;
+    const { splitInputWidth, splitPreviewWidth, requiredPreviewPanelHeight } = getSplitFitMetrics({
+      surface,
+      previewPanel,
+      previewStage,
+      cardAspect,
+      availableSplitWidth,
+    });
 
     setLayoutMode((current) => {
-      if (current === "split") {
-        return shouldStackByWidth || shouldStackByHeight ? "stacked" : "split";
-      }
-      return canUnstackByWidth && canUnstackByHeight ? "split" : "stacked";
+      return getNextLayoutMode({
+        current,
+        splitInputWidth,
+        splitPreviewWidth,
+        requiredPreviewPanelHeight,
+        availableSplitHeight,
+      });
     });
   }, [resolvePreviewCard, side.layout.quickLayout.cardRatio]);
 

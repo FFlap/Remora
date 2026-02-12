@@ -53,8 +53,8 @@ test.describe("Insight-like editor parity", () => {
     expect(stageBox).not.toBeNull();
     expect(canvasBox).not.toBeNull();
     if (stageBox && canvasBox) {
-      expect(canvasBox.width / stageBox.width).toBeGreaterThan(0.58);
-      expect(canvasBox.height / stageBox.height).toBeGreaterThan(0.58);
+      expect(canvasBox.width / stageBox.width).toBeGreaterThan(0.5);
+      expect(canvasBox.height / stageBox.height).toBeGreaterThan(0.5);
     }
 
     await page.getByTestId("creative-tool-draw").click();

@@ -41,70 +41,73 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
   await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
 }
 
-async function readVisibilityMetrics(
+function readVisibilityMetrics(
   page: Parameters<typeof test>[0]["page"],
   selectors: { container: string; card: string },
 ): Promise<VisibilityMetrics | null> {
-  return page.evaluate(({ containerSelector, cardSelector }) => {
-    const container = document.querySelector(containerSelector) as HTMLElement | null;
-    const card = document.querySelector(cardSelector) as HTMLElement | null;
-    if (!container || !card) return null;
+  return page.evaluate(
+    ({ containerSelector, cardSelector }) => {
+      const container = document.querySelector(containerSelector) as HTMLElement | null;
+      const card = document.querySelector(cardSelector) as HTMLElement | null;
+      if (!container || !card) return null;
 
-    const containerRect = container.getBoundingClientRect();
-    const within = (cardRect: DOMRect) =>
-      cardRect.top >= containerRect.top - 1 &&
-      cardRect.left >= containerRect.left - 1 &&
-      cardRect.bottom <= containerRect.bottom + 1 &&
-      cardRect.right <= containerRect.right + 1;
+      const containerRect = container.getBoundingClientRect();
+      const within = (cardRect: DOMRect) =>
+        cardRect.top >= containerRect.top - 1 &&
+        cardRect.left >= containerRect.left - 1 &&
+        cardRect.bottom <= containerRect.bottom + 1 &&
+        cardRect.right <= containerRect.right + 1;
 
-    container.scrollTop = 0;
-    container.scrollLeft = 0;
-    const atStartRect = card.getBoundingClientRect();
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
+      const atStartRect = card.getBoundingClientRect();
 
-    const maxScrollY = Math.max(0, container.scrollHeight - container.clientHeight);
-    const maxScrollX = Math.max(0, container.scrollWidth - container.clientWidth);
+      const maxScrollY = Math.max(0, container.scrollHeight - container.clientHeight);
+      const maxScrollX = Math.max(0, container.scrollWidth - container.clientWidth);
 
-    container.scrollTop = maxScrollY;
-    const atBottomRect = card.getBoundingClientRect();
+      container.scrollTop = maxScrollY;
+      const atBottomRect = card.getBoundingClientRect();
 
-    container.scrollLeft = maxScrollX;
-    const atEndRect = card.getBoundingClientRect();
+      container.scrollLeft = maxScrollX;
+      const atEndRect = card.getBoundingClientRect();
 
-    const cardFullyVisible = within(atStartRect);
-    const topVisibleAtStart = atStartRect.top >= containerRect.top - 1;
-    const leftVisibleAtStart = atStartRect.left >= containerRect.left - 1;
-    const bottomVisibleAtEnd = atBottomRect.bottom <= containerRect.bottom + 1;
-    const rightVisibleAtEnd = atEndRect.right <= containerRect.right + 1;
+      const cardFullyVisible = within(atStartRect);
+      const topVisibleAtStart = atStartRect.top >= containerRect.top - 1;
+      const leftVisibleAtStart = atStartRect.left >= containerRect.left - 1;
+      const bottomVisibleAtEnd = atBottomRect.bottom <= containerRect.bottom + 1;
+      const rightVisibleAtEnd = atEndRect.right <= containerRect.right + 1;
 
-    container.scrollTop = 0;
-    container.scrollLeft = 0;
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
 
-    return {
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      },
-      cardRect: {
-        top: atStartRect.top,
-        right: atStartRect.right,
-        bottom: atStartRect.bottom,
-        left: atStartRect.left,
-      },
-      containerRect: {
-        top: containerRect.top,
-        right: containerRect.right,
-        bottom: containerRect.bottom,
-        left: containerRect.left,
-      },
-      cardFullyVisible,
-      containerScrollableY: container.scrollHeight > container.clientHeight + 1,
-      containerScrollableX: container.scrollWidth > container.clientWidth + 1,
-      topVisibleAtStart,
-      bottomVisibleAtEnd,
-      leftVisibleAtStart,
-      rightVisibleAtEnd,
-    };
-  }, { containerSelector: selectors.container, cardSelector: selectors.card });
+      return {
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        cardRect: {
+          top: atStartRect.top,
+          right: atStartRect.right,
+          bottom: atStartRect.bottom,
+          left: atStartRect.left,
+        },
+        containerRect: {
+          top: containerRect.top,
+          right: containerRect.right,
+          bottom: containerRect.bottom,
+          left: containerRect.left,
+        },
+        cardFullyVisible,
+        containerScrollableY: container.scrollHeight > container.clientHeight + 1,
+        containerScrollableX: container.scrollWidth > container.clientWidth + 1,
+        topVisibleAtStart,
+        bottomVisibleAtEnd,
+        leftVisibleAtStart,
+        rightVisibleAtEnd,
+      };
+    },
+    { containerSelector: selectors.container, cardSelector: selectors.card },
+  );
 }
 
 test.describe("Half-height editor visibility and scroll", () => {
@@ -128,7 +131,9 @@ test.describe("Half-height editor visibility and scroll", () => {
 
       const verticallyInspectable = metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd;
       const horizontallyInspectable = metrics.leftVisibleAtStart && metrics.rightVisibleAtEnd;
-      expect(metrics.cardFullyVisible || (verticallyInspectable && horizontallyInspectable)).toBeTruthy();
+      expect(
+        metrics.cardFullyVisible || (verticallyInspectable && horizontallyInspectable),
+      ).toBeTruthy();
     }
   });
 
@@ -152,7 +157,9 @@ test.describe("Half-height editor visibility and scroll", () => {
 
       const verticallyInspectable = metrics.topVisibleAtStart && metrics.bottomVisibleAtEnd;
       const horizontallyInspectable = metrics.leftVisibleAtStart && metrics.rightVisibleAtEnd;
-      expect(metrics.cardFullyVisible || (verticallyInspectable && horizontallyInspectable)).toBeTruthy();
+      expect(
+        metrics.cardFullyVisible || (verticallyInspectable && horizontallyInspectable),
+      ).toBeTruthy();
     }
   });
 });

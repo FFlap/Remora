@@ -47,8 +47,8 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     const creativeEditor = creativeInlineEditor.locator('[contenteditable="true"]').first();
     await expect(creativeEditor).toContainText("Quick to Creative Sync");
     await creativeEditor.click();
-    await page.keyboard.press("End");
-    await page.keyboard.type(" + Creative");
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.type("Quick to Creative Sync + Creative");
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
     await page.getByTestId("creative-add-text-button").click();

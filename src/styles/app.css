@@ -415,7 +415,6 @@
     width: clamp(132px, 16vw, 168px);
     min-width: clamp(132px, 16vw, 168px);
   }
-
 }
 
 @media (max-height: 900px) {

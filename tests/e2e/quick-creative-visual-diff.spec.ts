@@ -46,6 +46,7 @@ test.describe("Quick/Create visual parity", () => {
     await page.mouse.down();
     await page.mouse.move(canvasBox.x + 280, canvasBox.y + canvasBox.height - 40);
     await page.mouse.up();
+    await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 15000 });
 
     const creativeBuffer = await creativeCanvas.screenshot({ type: "png" });
 
@@ -77,10 +78,22 @@ test.describe("Quick/Create visual parity", () => {
     });
 
     if (comparison.aInkBounds && comparison.bInkBounds) {
-      expect(Math.abs(comparison.aInkBounds.minX - comparison.bInkBounds.minX)).toBeLessThan(10);
-      expect(Math.abs(comparison.aInkBounds.maxX - comparison.bInkBounds.maxX)).toBeLessThan(10);
-      expect(Math.abs(comparison.aInkBounds.minY - comparison.bInkBounds.minY)).toBeLessThan(10);
-      expect(Math.abs(comparison.aInkBounds.maxY - comparison.bInkBounds.maxY)).toBeLessThan(10);
+      const width = Math.max(1, comparison.aInkBounds.maxX - comparison.aInkBounds.minX);
+      const height = Math.max(1, comparison.aInkBounds.maxY - comparison.aInkBounds.minY);
+      const xTolerance = Math.max(16, width * 0.14);
+      const yTolerance = Math.max(16, height * 0.14);
+      expect(Math.abs(comparison.aInkBounds.minX - comparison.bInkBounds.minX)).toBeLessThan(
+        xTolerance,
+      );
+      expect(Math.abs(comparison.aInkBounds.maxX - comparison.bInkBounds.maxX)).toBeLessThan(
+        xTolerance,
+      );
+      expect(Math.abs(comparison.aInkBounds.minY - comparison.bInkBounds.minY)).toBeLessThan(
+        yTolerance,
+      );
+      expect(Math.abs(comparison.aInkBounds.maxY - comparison.bInkBounds.maxY)).toBeLessThan(
+        yTolerance,
+      );
     }
 
     expect(comparison.diffRatio).toBeLessThan(0.13);

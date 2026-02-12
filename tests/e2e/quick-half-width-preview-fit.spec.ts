@@ -55,6 +55,7 @@ function readQuickPreviewMetrics(
 
     const expectedAspect = getComputedStyle(card).aspectRatio;
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: In-page helper mirrors browser aspect-ratio parsing cases used by this regression test.
     const parseAspectRatio = (raw: string) => {
       if (!raw) return null;
       const trimmed = raw.trim();

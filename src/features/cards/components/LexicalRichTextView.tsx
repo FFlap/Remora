@@ -53,7 +53,9 @@ function asScale(scale: number) {
 
 function isScrollableY(node: HTMLElement) {
   const style = window.getComputedStyle(node);
-  if (!(style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowY === "overlay")) {
+  if (
+    !(style.overflowY === "auto" || style.overflowY === "scroll" || style.overflowY === "overlay")
+  ) {
     return false;
   }
   return node.scrollHeight > node.clientHeight + 1;

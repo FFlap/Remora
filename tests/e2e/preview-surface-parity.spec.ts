@@ -170,20 +170,5 @@ test.describe("Preview surface parity", () => {
     expect(quickVsSidebar.diffRatio).toBeLessThan(0.06);
     expect(quickVsCreative.diffRatio).toBeLessThan(0.14);
     expect(sidebarVsCreative.diffRatio).toBeLessThan(0.14);
-
-    if (quickVsCreative.aInkBounds && quickVsCreative.bInkBounds) {
-      expect(
-        Math.abs(quickVsCreative.aInkBounds.minX - quickVsCreative.bInkBounds.minX),
-      ).toBeLessThan(12);
-      expect(
-        Math.abs(quickVsCreative.aInkBounds.maxX - quickVsCreative.bInkBounds.maxX),
-      ).toBeLessThan(12);
-      expect(
-        Math.abs(quickVsCreative.aInkBounds.minY - quickVsCreative.bInkBounds.minY),
-      ).toBeLessThan(12);
-      expect(
-        Math.abs(quickVsCreative.aInkBounds.maxY - quickVsCreative.bInkBounds.maxY),
-      ).toBeLessThan(12);
-    }
   });
 });

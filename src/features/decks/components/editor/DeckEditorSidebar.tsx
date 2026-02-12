@@ -35,6 +35,44 @@ type DeckEditorSidebarProps = {
   onResetActiveSideIndex: () => void;
 };
 
+function canScrollWithDelta(node: HTMLElement, deltaY: number) {
+  const maxScrollTop = node.scrollHeight - node.clientHeight;
+  if (maxScrollTop <= 1 || deltaY === 0) return false;
+  const atTop = node.scrollTop <= 1;
+  const atBottom = node.scrollTop >= maxScrollTop - 1;
+  if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return false;
+  return true;
+}
+
+function shouldAllowNestedScroll(
+  container: HTMLElement,
+  target: HTMLElement | null,
+  deltaY: number,
+) {
+  const nestedScrollHost = target?.closest(".remora-preview-scroll") as HTMLElement | null;
+  if (!nestedScrollHost || nestedScrollHost === container) {
+    return false;
+  }
+  return canScrollWithDelta(nestedScrollHost, deltaY);
+}
+
+function scrollSidebarOnHoverWheel(event: WheelEvent<HTMLDivElement>) {
+  const container = event.currentTarget;
+  const deltaY = event.deltaY;
+  if (deltaY === 0) return;
+
+  if (shouldAllowNestedScroll(container, event.target as HTMLElement | null, deltaY)) {
+    return;
+  }
+  if (!canScrollWithDelta(container, deltaY)) {
+    return;
+  }
+
+  event.preventDefault();
+  const maxScrollTop = container.scrollHeight - container.clientHeight;
+  container.scrollTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + deltaY));
+}
+
 export function DeckEditorSidebar({
   deckId,
   data,
@@ -107,34 +145,6 @@ export function DeckEditorSidebar({
       ...current,
       [sectionId]: !(current[sectionId] ?? false),
     }));
-  };
-
-  const scrollSidebarOnHoverWheel = (event: WheelEvent<HTMLDivElement>) => {
-    const container = event.currentTarget;
-    const deltaY = event.deltaY;
-    if (deltaY === 0) return;
-
-    const target = event.target as HTMLElement | null;
-    const nestedScrollHost = target?.closest(".remora-preview-scroll") as HTMLElement | null;
-    if (nestedScrollHost && nestedScrollHost !== container) {
-      const nestedMax = nestedScrollHost.scrollHeight - nestedScrollHost.clientHeight;
-      if (nestedMax > 1) {
-        const nestedAtTop = nestedScrollHost.scrollTop <= 1;
-        const nestedAtBottom = nestedScrollHost.scrollTop >= nestedMax - 1;
-        if ((deltaY < 0 && !nestedAtTop) || (deltaY > 0 && !nestedAtBottom)) {
-          return;
-        }
-      }
-    }
-
-    const maxScrollTop = container.scrollHeight - container.clientHeight;
-    if (maxScrollTop <= 1) return;
-    const atTop = container.scrollTop <= 1;
-    const atBottom = container.scrollTop >= maxScrollTop - 1;
-    if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
-
-    event.preventDefault();
-    container.scrollTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + deltaY));
   };
 
   return (
