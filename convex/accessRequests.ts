@@ -127,13 +127,15 @@ export const resolveRequest = mutation({
 
     if (args.decision === "approved") {
       const normalizedRequesterEmail = normalizeEmail(request.requesterEmail);
-      const whitelistEmails = Array.from(
-        new Set([...deck.whitelistEmails, normalizedRequesterEmail]),
-      );
-      await ctx.db.patch(deck._id, {
-        whitelistEmails: whitelistEmails.filter(Boolean),
-        updatedAt: now,
-      });
+      if (normalizedRequesterEmail) {
+        const whitelistEmails = Array.from(
+          new Set([...deck.whitelistEmails, normalizedRequesterEmail]),
+        );
+        await ctx.db.patch(deck._id, {
+          whitelistEmails: whitelistEmails.filter(Boolean),
+          updatedAt: now,
+        });
+      }
     }
     return null;
   },

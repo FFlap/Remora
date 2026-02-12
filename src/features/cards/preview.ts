@@ -31,6 +31,9 @@ export function extractFrontPreview(side: SideModel | undefined) {
 function collectLexicalText(nodes: unknown[]): string {
   return nodes
     .map((node) => {
+      if (!node || typeof node !== "object") {
+        return "";
+      }
       const lexicalNode = node as { text?: unknown; children?: unknown[] };
       if (typeof lexicalNode.text === "string") {
         return lexicalNode.text;

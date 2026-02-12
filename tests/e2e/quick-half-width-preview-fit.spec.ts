@@ -37,17 +37,22 @@ type QuickPreviewMetrics = {
   rightVisibleAtEnd: boolean;
 };
 
-async function readQuickPreviewMetrics(
+function readQuickPreviewMetrics(
   page: Parameters<typeof test>[0]["page"],
 ): Promise<QuickPreviewMetrics | null> {
   return page.evaluate(() => {
     const stage = document.querySelector(".quick-editor-preview-stage") as HTMLElement | null;
-    const card = document.querySelector('[data-testid="quick-live-preview-card"]') as HTMLElement | null;
-    const contentRow = document.querySelector('[data-testid="editor-content-row"]') as HTMLElement | null;
-    const surface = document.querySelector('[data-testid="quick-editor-surface-grid"]') as HTMLElement | null;
+    const card = document.querySelector(
+      '[data-testid="quick-live-preview-card"]',
+    ) as HTMLElement | null;
+    const contentRow = document.querySelector(
+      '[data-testid="editor-content-row"]',
+    ) as HTMLElement | null;
+    const surface = document.querySelector(
+      '[data-testid="quick-editor-surface-grid"]',
+    ) as HTMLElement | null;
     if (!stage || !card || !contentRow || !surface) return null;
 
-    const stageRect = stage.getBoundingClientRect();
     const expectedAspect = getComputedStyle(card).aspectRatio;
 
     const parseAspectRatio = (raw: string) => {
@@ -117,16 +122,28 @@ test.describe("Quick half-width preview fit", () => {
     await page.getByTestId("mode-quick-button").click();
 
     await page.setViewportSize({ width: 2200, height: 1200 });
-    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute("data-layout", "split");
+    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute(
+      "data-layout",
+      "split",
+    );
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute("data-layout", "stacked");
+    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute(
+      "data-layout",
+      "stacked",
+    );
 
     await page.setViewportSize({ width: 920, height: 760 });
-    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute("data-layout", "stacked");
+    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute(
+      "data-layout",
+      "stacked",
+    );
 
     await page.setViewportSize({ width: 1280, height: 560 });
-    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute("data-layout", "stacked");
+    await expect(page.getByTestId("quick-editor-surface-grid")).toHaveAttribute(
+      "data-layout",
+      "stacked",
+    );
 
     const inputPanel = page.locator(".quick-editor-input-panel").first();
     const previewPanel = page.locator(".quick-editor-preview-panel").first();
@@ -150,7 +167,9 @@ test.describe("Quick half-width preview fit", () => {
     expect(inputBox.width / Math.max(1, surfaceBox.width)).toBeGreaterThanOrEqual(0.96);
   });
 
-  test("keeps full quick live preview visible and preserves card aspect ratio", async ({ page }) => {
+  test("keeps full quick live preview visible and preserves card aspect ratio", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
     await page.getByTestId("mode-quick-button").click();
     await expect(page.getByTestId("quick-live-preview-card")).toBeVisible();

@@ -71,7 +71,7 @@ function createDefaultRichTextElement(seed: string): RichTextBlock {
 
 function newImageElement(index: number, url: string): SideElement {
   return {
-    id: `img-${Date.now()}`,
+    id: `img-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
     type: "image",
     url,
     quick: { order: index },
@@ -87,7 +87,7 @@ function newImageElement(index: number, url: string): SideElement {
 
 function newEmbedElement(index: number, url: string): SideElement {
   return {
-    id: `embed-${Date.now()}`,
+    id: `embed-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
     type: "embed",
     url,
     quick: { order: index },

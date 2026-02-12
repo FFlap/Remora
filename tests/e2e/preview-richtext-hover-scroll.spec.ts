@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { signInAsOwner } from "./utils/clerkAuth";
 
-async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"]) {
+async function createDeckAndOpenEditor(page: Page) {
   await signInAsOwner(page);
   await page.goto("/app/decks/new");
   await page.waitForFunction(

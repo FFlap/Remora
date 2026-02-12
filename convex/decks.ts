@@ -431,23 +431,23 @@ export const removeCascadeStep = internalMutation({
       return null;
     }
 
-    let deletedCount = 0;
     let failedCount = 0;
 
     for (const asset of assets) {
       if (!asset.storageId) {
         await ctx.db.delete(asset._id);
-        deletedCount += 1;
         continue;
       }
 
       try {
         await ctx.storage.delete(asset.storageId);
         await ctx.db.delete(asset._id);
-        deletedCount += 1;
       } catch (error) {
         failedCount += 1;
         console.error(`Failed to delete storage for asset ${asset._id}`, error);
+        await ctx.db.patch(asset._id, {
+          deckId: undefined,
+        });
         await ctx.scheduler.runAfter(ASSET_RETRY_BASE_DELAY_MS, internal.decks.retryAssetDelete, {
           assetId: asset._id,
           attempt: 1,
@@ -455,10 +455,7 @@ export const removeCascadeStep = internalMutation({
       }
     }
 
-    let delay = 0;
-    if (deletedCount === 0 && failedCount > 0) {
-      delay = ASSET_RETRY_BASE_DELAY_MS;
-    }
+    const delay = failedCount > 0 ? ASSET_RETRY_BASE_DELAY_MS : 0;
     await ctx.scheduler.runAfter(delay, internal.decks.removeCascadeStep, {
       deckId: args.deckId,
       stage: "assets",
@@ -492,6 +489,7 @@ export const retryAssetDelete = internalMutation({
       const attempt = Math.max(1, Math.floor(args.attempt ?? 1));
       console.error(`Failed to retry storage delete for asset ${asset._id}`, error);
       if (attempt >= ASSET_RETRY_MAX_ATTEMPTS) {
+        await ctx.db.delete(asset._id);
         return null;
       }
 

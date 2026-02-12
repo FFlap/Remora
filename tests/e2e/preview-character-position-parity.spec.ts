@@ -99,8 +99,8 @@ function expectLineRowsEqual(
   b: TextLayoutSignature["rects"],
   tolerance = 0.003,
 ) {
-  const rowsA = toLineRows(a);
-  const rowsB = toLineRows(b);
+  const rowsA = toLineRows(a, tolerance);
+  const rowsB = toLineRows(b, tolerance);
   expect(rowsB.length).toBe(rowsA.length);
   for (let i = 0; i < rowsA.length; i += 1) {
     expect(Math.abs((rowsB[i]?.y ?? 0) - (rowsA[i]?.y ?? 0))).toBeLessThanOrEqual(tolerance);

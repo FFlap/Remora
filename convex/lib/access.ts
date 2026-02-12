@@ -42,6 +42,15 @@ export async function getDeckReadDecision(
     return { allowed: false, isOwner: false, reason: "private" };
   }
 
+  const existingRequest = user
+    ? await ctx.db
+        .query("deckAccessRequests")
+        .withIndex("by_requester_and_deck", (q) =>
+          q.eq("requesterUserId", user._id).eq("deckId", deck._id),
+        )
+        .first()
+    : null;
+
   if (!identity) {
     return {
       allowed: false,
@@ -52,6 +61,16 @@ export async function getDeckReadDecision(
 
   const normalizedViewerEmail = normalizeEmail(identity.email);
   if (!normalizedViewerEmail) {
+    if (existingRequest?.status === "approved") {
+      return { allowed: true, isOwner: false };
+    }
+    if (existingRequest?.status === "pending") {
+      return {
+        allowed: false,
+        isOwner: false,
+        reason: "whitelist_pending",
+      };
+    }
     return {
       allowed: false,
       isOwner: false,
@@ -65,21 +84,12 @@ export async function getDeckReadDecision(
     return { allowed: true, isOwner: false };
   }
 
-  if (user) {
-    const existingRequest = await ctx.db
-      .query("deckAccessRequests")
-      .withIndex("by_requester_and_deck", (q) =>
-        q.eq("requesterUserId", user._id).eq("deckId", deck._id),
-      )
-      .first();
-
-    if (existingRequest?.status === "pending") {
-      return {
-        allowed: false,
-        isOwner: false,
-        reason: "whitelist_pending",
-      };
-    }
+  if (existingRequest?.status === "pending") {
+    return {
+      allowed: false,
+      isOwner: false,
+      reason: "whitelist_pending",
+    };
   }
 
   return {

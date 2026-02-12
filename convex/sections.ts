@@ -104,6 +104,14 @@ export const remove = mutation({
     }
     await assertCanEditDeck(ctx, section.deckId);
 
+    const sectionSample = await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", section.deckId))
+      .take(2);
+    if (sectionSample.length <= 1) {
+      throw new Error("Deck must have at least one section");
+    }
+
     const cards = await ctx.db
       .query("cards")
       .withIndex("by_section", (q) => q.eq("sectionId", section._id))

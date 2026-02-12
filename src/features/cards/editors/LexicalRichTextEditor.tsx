@@ -228,7 +228,7 @@ function createInitialConfig(editorKey: string, serializedValue: string, isInlin
 
   return {
     namespace: `remora-quick-${editorKey}`,
-    editorState: serializedValue,
+    ...(serializedValue ? { editorState: serializedValue } : {}),
     onError(error: Error) {
       throw error;
     },
@@ -286,7 +286,15 @@ export function LexicalRichTextEditor({
   placeholder?: string;
   className?: string;
 }) {
-  const serializedValue = useMemo(() => JSON.stringify(value), [value]);
+  const serializedValue = useMemo(() => {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value == null) {
+      return "";
+    }
+    return JSON.stringify(value);
+  }, [value]);
   const lastLocalChangeRef = useRef(serializedValue);
   const initialSerializedValueRef = useRef(serializedValue);
   const contentEditableRef = useRef<HTMLDivElement | null>(null);

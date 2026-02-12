@@ -65,12 +65,12 @@ export const saveSide = mutation({
       return null;
     }
 
-    if (card.lastEditedMode !== args.lastEditedMode) {
-      await ctx.db.patch(card._id, {
-        lastEditedMode: args.lastEditedMode,
-        updatedAt: now,
-      });
-    }
+    await ctx.db.patch(card._id, {
+      updatedAt: now,
+      ...(card.lastEditedMode !== args.lastEditedMode
+        ? { lastEditedMode: args.lastEditedMode }
+        : {}),
+    });
     return null;
   },
 });
