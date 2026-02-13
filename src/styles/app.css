@@ -622,6 +622,12 @@
   transform: rotateY(180deg);
 }
 
+@media (max-width: 1380px) {
+  .deck-viewer-shell {
+    grid-template-columns: clamp(194px, 22vw, 256px) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1180px) {
   .deck-viewer-shell {
     grid-template-columns: clamp(176px, 24vw, 232px) minmax(0, 1fr);
@@ -658,20 +664,10 @@
 
 @media (max-width: 900px) {
   .deck-viewer-shell {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: clamp(132px, 19vh, 186px) minmax(0, 1fr);
-  }
-
-  .deck-viewer-main {
-    --viewer-main-chrome-reserve: clamp(390px, 52vh, 460px);
+    grid-template-columns: clamp(176px, 24vw, 232px) minmax(0, 1fr);
   }
 
   .deck-viewer-main-scroll {
     padding: clamp(0.65rem, 1.6vw, 0.95rem);
-  }
-
-  .deck-viewer-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
   }
 }
