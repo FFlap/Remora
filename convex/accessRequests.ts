@@ -42,7 +42,7 @@ export const requestAccess = mutation({
     const now = Date.now();
 
     if (existing) {
-      if (existing.status === "pending") {
+      if (existing.status === "pending" || existing.status === "approved") {
         return existing._id;
       }
 

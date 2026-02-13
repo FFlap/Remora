@@ -10,22 +10,8 @@ import type {
   SideElement,
   SideModel,
 } from "../side-model/types";
+import { normalizeHttpUrl } from "./creative/lexical-utils";
 import { QuickEditorContent } from "./quick/QuickEditorContent";
-
-function normalizeHttpUrl(url: string) {
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-  try {
-    const parsed = new URL(
-      trimmed.startsWith("http://") || trimmed.startsWith("https://")
-        ? trimmed
-        : `https://${trimmed}`,
-    );
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
 
 function createDefaultRichTextElement(seed: string): RichTextBlock {
   return {

@@ -1,7 +1,10 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { sectionDocValidator } from "./lib/constants";
+
+const SECTION_SIDE_CLEANUP_BATCH_SIZE = 50;
 
 export const listByDeck = query({
   args: { deckId: v.id("decks") },
@@ -112,21 +115,62 @@ export const remove = mutation({
       throw new Error("Deck must have at least one section");
     }
 
-    const cards = await ctx.db
-      .query("cards")
-      .withIndex("by_section", (q) => q.eq("sectionId", section._id))
-      .collect();
+    await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+      sectionId: section._id,
+    });
+    await ctx.db.delete(section._id);
+    return null;
+  },
+});
 
-    for (const card of cards) {
-      const sides = await ctx.db
-        .query("cardSides")
-        .withIndex("by_card", (q) => q.eq("cardId", card._id))
-        .collect();
-      await Promise.all(sides.map((side) => ctx.db.delete(side._id)));
-      await ctx.db.delete(card._id);
+export const removeCardsCascadeStep = internalMutation({
+  args: {
+    sectionId: v.id("sections"),
+    cardId: v.optional(v.id("cards")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    let targetCardId = args.cardId;
+
+    if (targetCardId) {
+      const card = await ctx.db.get(targetCardId);
+      if (!card || card.sectionId !== args.sectionId) {
+        targetCardId = undefined;
+      }
     }
 
-    await ctx.db.delete(section._id);
+    if (!targetCardId) {
+      const [nextCard] = await ctx.db
+        .query("cards")
+        .withIndex("by_section", (q) => q.eq("sectionId", args.sectionId))
+        .take(1);
+
+      if (!nextCard) {
+        return null;
+      }
+      targetCardId = nextCard._id;
+    }
+
+    const sides = await ctx.db
+      .query("cardSides")
+      .withIndex("by_card", (q) => q.eq("cardId", targetCardId))
+      .take(SECTION_SIDE_CLEANUP_BATCH_SIZE);
+
+    if (sides.length > 0) {
+      for (const side of sides) {
+        await ctx.db.delete(side._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+        sectionId: args.sectionId,
+        cardId: targetCardId,
+      });
+      return null;
+    }
+
+    await ctx.db.delete(targetCardId);
+    await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+      sectionId: args.sectionId,
+    });
     return null;
   },
 });

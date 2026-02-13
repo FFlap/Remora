@@ -487,8 +487,18 @@ export const retryAssetDelete = internalMutation({
       return null;
     } catch (error) {
       const attempt = Math.max(1, Math.floor(args.attempt ?? 1));
-      console.error(`Failed to retry storage delete for asset ${asset._id}`, error);
+      console.error(
+        `Failed to retry storage delete for asset ${asset._id} (attempt ${attempt})`,
+        error,
+      );
       if (attempt >= ASSET_RETRY_MAX_ATTEMPTS) {
+        console.error("Asset storage delete retries exhausted; potential orphaned storage blob", {
+          assetId: asset._id,
+          storageId: asset.storageId,
+          ownerUserId: asset.ownerUserId,
+          attempt,
+          maxAttempts: ASSET_RETRY_MAX_ATTEMPTS,
+        });
         await ctx.db.delete(asset._id);
         return null;
       }

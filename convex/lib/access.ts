@@ -84,6 +84,10 @@ export async function getDeckReadDecision(
     return { allowed: true, isOwner: false };
   }
 
+  if (existingRequest?.status === "approved") {
+    return { allowed: true, isOwner: false };
+  }
+
   if (existingRequest?.status === "pending") {
     return {
       allowed: false,
