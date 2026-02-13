@@ -203,6 +203,42 @@ test.describe("Bottom side tray row layout", () => {
     await expect(lastSide).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("scrolls side tray by wheel while hovering the side area", async ({ page }) => {
+    test.setTimeout(90000);
+    await createDeckAndOpenEditor(page);
+    await page.setViewportSize({ width: 980, height: 860 });
+
+    for (let index = 0; index < 24; index += 1) {
+      await page.getByTestId("side-tray-add-side").click();
+    }
+
+    await expect
+      .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
+        timeout: 15000,
+      })
+      .toBe(26);
+
+    const tray = page.getByTestId("side-tray");
+    await expect(tray).toBeVisible();
+    await tray.evaluate((node) => {
+      node.scrollLeft = 0;
+    });
+    const trayOverflows = await tray.evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+    expect(trayOverflows).toBeTruthy();
+
+    const trayBox = await tray.boundingBox();
+    expect(trayBox).not.toBeNull();
+    if (!trayBox) return;
+
+    await page.mouse.move(trayBox.x + trayBox.width / 2, trayBox.y + trayBox.height / 2);
+    const before = await tray.evaluate((node) => node.scrollLeft);
+    await page.mouse.wheel(0, 1200);
+
+    await expect
+      .poll(() => tray.evaluate((node) => node.scrollLeft), { timeout: 4000 })
+      .toBeGreaterThan(before + 1);
+  });
+
   test("keeps add, delete, select behavior and min-side delete guard", async ({ page }) => {
     await createDeckAndOpenEditor(page);
 

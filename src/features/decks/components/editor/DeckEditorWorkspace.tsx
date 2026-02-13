@@ -1,5 +1,5 @@
 import { PenSquare, Plus, Redo2, Shapes, Trash2, Undo2 } from "lucide-react";
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, type WheelEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-model/ops";
@@ -75,6 +75,35 @@ export function DeckEditorWorkspace({
     },
     [sideHistory],
   );
+  const handleSideTrayWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
+    const tray = event.currentTarget;
+    if (tray.scrollWidth <= tray.clientWidth + 1) {
+      return;
+    }
+
+    let deltaFactor = 1;
+    if (event.deltaMode === 1) {
+      deltaFactor = 16;
+    } else if (event.deltaMode === 2) {
+      deltaFactor = tray.clientWidth;
+    }
+    const deltaX = event.deltaX * deltaFactor;
+    const deltaY = event.deltaY * deltaFactor;
+    const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+    if (!Number.isFinite(delta) || Math.abs(delta) < 0.5) {
+      return;
+    }
+
+    const before = tray.scrollLeft;
+    const maxScrollLeft = Math.max(0, tray.scrollWidth - tray.clientWidth);
+    const nextScrollLeft = Math.min(maxScrollLeft, Math.max(0, before + delta));
+    if (Math.abs(nextScrollLeft - before) < 0.5) {
+      return;
+    }
+
+    event.preventDefault();
+    tray.scrollLeft = nextScrollLeft;
+  }, []);
 
   if (!selectedCard) {
     return (
@@ -193,9 +222,13 @@ export function DeckEditorWorkspace({
           className="deck-editor-side-tray-row border-t border-border bg-muted/20 px-3 md:px-4 py-3"
           data-testid="editor-side-tray-row"
         >
-          <div className="deck-editor-side-tray-inner flex w-full flex-wrap items-start gap-3 md:flex-nowrap md:items-center">
-            <div className="side-tray-scroll flex-1 overflow-x-auto" data-testid="side-tray">
-              <div className="side-tray-strip flex min-w-max items-start gap-3 pr-2">
+          <div className="deck-editor-side-tray-inner flex w-full min-w-0 flex-wrap items-start gap-3 md:flex-nowrap md:items-center">
+            <div
+              className="side-tray-scroll flex-1 min-w-0 overflow-x-auto"
+              data-testid="side-tray"
+              onWheel={handleSideTrayWheel}
+            >
+              <div className="side-tray-strip flex w-max min-w-max flex-nowrap items-start gap-3 pr-2">
                 {sortedSides.map((side) => {
                   const isActive = side.index === activeSideIndex;
                   const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);

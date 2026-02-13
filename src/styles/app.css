@@ -197,11 +197,14 @@
   min-height: clamp(104px, 14vh, 156px);
   height: auto;
   display: flex;
+  min-width: 0;
+  overflow-x: hidden;
   align-items: stretch;
 }
 
 .deck-editor-side-tray-inner {
   width: 100%;
+  min-width: 0;
   gap: clamp(0.6rem, 1.2vw, 0.95rem);
 }
 
@@ -215,12 +218,16 @@
 }
 
 .side-tray-scroll {
+  max-width: 100%;
+  overflow-x: auto;
   overflow-y: hidden;
   min-width: 0;
 }
 
 .side-tray-strip {
+  width: max-content;
   min-height: 100%;
+  flex-wrap: nowrap;
   align-items: flex-start;
 }
 
