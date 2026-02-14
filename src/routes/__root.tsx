@@ -30,6 +30,7 @@ export const Route = createRootRouteWithContext<{
     links: [{ rel: "stylesheet", href: appCss }],
   }),
   component: RootComponent,
+  notFoundComponent: RootNotFound,
 });
 
 function RootComponent() {
@@ -58,5 +59,22 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <Scripts />
       </body>
     </html>
+  );
+}
+
+function RootNotFound() {
+  return (
+    <main className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="text-3xl font-semibold tracking-tight">Page Not Found</h1>
+      <p className="max-w-md text-sm text-muted-foreground">
+        The page you requested does not exist or may have moved.
+      </p>
+      <a
+        href="/"
+        className="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+      >
+        Go To Home
+      </a>
+    </main>
   );
 }
