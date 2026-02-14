@@ -1,7 +1,23 @@
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PenSquare, Plus, Redo2, Shapes, Trash2, Undo2 } from "lucide-react";
 import {
   lazy,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   Suspense,
   useCallback,
   useEffect,
@@ -14,7 +30,7 @@ import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-model/ops";
 import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
 import type { DeckEditorCardData } from "@/features/decks/types/editor";
-import type { Doc } from "@/lib/convexApi";
+import type { Doc, Id } from "@/lib/convexApi";
 import { cn } from "@/lib/utils";
 
 const QuickEditor = lazy(async () => {
@@ -54,6 +70,7 @@ type DeckEditorWorkspaceProps = {
   onSelectSide: (index: number) => void | Promise<void>;
   onAddSide: () => Promise<void>;
   onDeleteSide: (sideIndex: number) => Promise<void>;
+  onReorderSides: (orderedSideIds: Id<"cardSides">[]) => Promise<void>;
 };
 
 type SideTrayContextMenuState = {
@@ -74,6 +91,7 @@ export function DeckEditorWorkspace({
   onSelectSide,
   onAddSide,
   onDeleteSide,
+  onReorderSides,
 }: DeckEditorWorkspaceProps) {
   const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0];
   const editorKey = `${selectedCard?._id ?? "none"}:${activeSide?._id ?? "none"}:${editorMode}`;
@@ -82,6 +100,14 @@ export function DeckEditorWorkspace({
   const sideTrayContextMenuRef = useRef<HTMLDivElement | null>(null);
   const [pinAddTileRight, setPinAddTileRight] = useState(false);
   const [sideContextMenu, setSideContextMenu] = useState<SideTrayContextMenuState>(null);
+  const sideIds = sortedSides.map((side) => String(side._id));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
   const applyArray = useCallback(
     (
       operations: SideOperation[],
@@ -139,6 +165,20 @@ export function DeckEditorWorkspace({
       });
     },
     [],
+  );
+  const handleSideDragEnd = useCallback(
+    ({ active, over }: DragEndEvent) => {
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = sideIds.indexOf(String(active.id));
+      const newIndex = sideIds.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+
+      closeSideContextMenu();
+      const orderedSideIds = arrayMove(sideIds, oldIndex, newIndex) as Id<"cardSides">[];
+      void onReorderSides(orderedSideIds);
+    },
+    [closeSideContextMenu, onReorderSides, sideIds],
   );
   const recomputeAddTilePinning = useCallback(() => {
     const tray = sideTrayScrollRef.current;
@@ -373,33 +413,50 @@ export function DeckEditorWorkspace({
                 ref={sideTrayStripRef}
                 className="side-tray-strip flex w-max min-w-max flex-nowrap items-start gap-3 pr-2"
               >
-                {sortedSides.map((side) => {
-                  const isActive = side.index === activeSideIndex;
-                  const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);
-                  return (
-                    <button
-                      key={side._id}
-                      type="button"
-                      data-testid={`side-tray-item-${side.index}`}
-                      aria-pressed={isActive}
-                      onClick={() => {
-                        void onSelectSide(side.index);
-                      }}
-                      onContextMenu={(event) => openSideContextMenu(event, side.index)}
-                      className={cn(
-                        "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
-                        isActive
-                          ? "border-foreground ring-2 ring-foreground/20"
-                          : "border-border hover:border-foreground/50",
-                      )}
-                    >
-                      <SideCardPreview side={traySide} compact className="w-full" ariaHidden />
-                      <p className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Side {side.index + 1}
-                      </p>
-                    </button>
-                  );
-                })}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={() => {
+                    closeSideContextMenu();
+                  }}
+                  onDragEnd={handleSideDragEnd}
+                >
+                  <SortableContext items={sideIds} strategy={horizontalListSortingStrategy}>
+                    {sortedSides.map((side) => {
+                      const isActive = side.index === activeSideIndex;
+                      const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);
+                      return (
+                        <SortableTraySide key={side._id} id={String(side._id)}>
+                          <button
+                            type="button"
+                            data-testid={`side-tray-item-${side.index}`}
+                            aria-pressed={isActive}
+                            onClick={() => {
+                              void onSelectSide(side.index);
+                            }}
+                            onContextMenu={(event) => openSideContextMenu(event, side.index)}
+                            className={cn(
+                              "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
+                              isActive
+                                ? "border-foreground ring-2 ring-foreground/20"
+                                : "border-border hover:border-foreground/50",
+                            )}
+                          >
+                            <SideCardPreview
+                              side={traySide}
+                              compact
+                              className="w-full"
+                              ariaHidden
+                            />
+                            <p className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+                              Side {side.index + 1}
+                            </p>
+                          </button>
+                        </SortableTraySide>
+                      );
+                    })}
+                  </SortableContext>
+                </DndContext>
                 {!pinAddTileRight ? addSideTile : null}
               </div>
             </div>
@@ -444,5 +501,30 @@ export function DeckEditorWorkspace({
         </div>
       ) : null}
     </main>
+  );
+}
+
+function SortableTraySide({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+  const horizontalOnlyTransform = transform ? { ...transform, y: 0 } : null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        transform: CSS.Transform.toString(horizontalOnlyTransform),
+        transition,
+      }}
+      className={cn(
+        "touch-none cursor-grab active:cursor-grabbing",
+        isDragging ? "opacity-60" : "opacity-100",
+      )}
+    >
+      {children}
+    </div>
   );
 }

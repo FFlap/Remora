@@ -166,3 +166,48 @@ export const deleteSide = mutation({
     return null;
   },
 });
+
+export const reorder = mutation({
+  args: {
+    cardId: v.id("cards"),
+    orderedSideIds: v.array(v.id("cardSides")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const card = await ctx.db.get(args.cardId);
+    if (!card) {
+      throw new Error("Card not found");
+    }
+
+    await assertCanEditDeck(ctx, card.deckId);
+
+    const sides = await ctx.db
+      .query("cardSides")
+      .withIndex("by_card", (q) => q.eq("cardId", args.cardId))
+      .collect();
+
+    const sideSet = new Set(sides.map((side) => side._id));
+    const orderedSet = new Set(args.orderedSideIds);
+    if (orderedSet.size !== args.orderedSideIds.length || orderedSet.size !== sideSet.size) {
+      throw new Error("Invalid or incomplete side ordering");
+    }
+
+    for (const sideId of orderedSet) {
+      if (!sideSet.has(sideId)) {
+        throw new Error("Invalid or incomplete side ordering");
+      }
+    }
+
+    const now = Date.now();
+    await Promise.all(
+      args.orderedSideIds.map((sideId, index) =>
+        ctx.db.patch(sideId, {
+          index,
+          updatedAt: now,
+        }),
+      ),
+    );
+    await ctx.db.patch(card._id, { updatedAt: now });
+    return null;
+  },
+});

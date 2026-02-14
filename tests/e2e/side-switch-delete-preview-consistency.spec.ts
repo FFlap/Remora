@@ -60,6 +60,30 @@ async function deleteSideViaTrayContextMenu(
   await sideMenu.getByRole("button", { name: "Delete side" }).click();
 }
 
+async function dragSideByIndex(
+  page: Parameters<typeof test>[0]["page"],
+  sourceIndex: number,
+  targetIndex: number,
+) {
+  const source = page.getByTestId(`side-tray-item-${sourceIndex}`);
+  const target = page.getByTestId(`side-tray-item-${targetIndex}`);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  if (!sourceBox || !targetBox) return;
+
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+    steps: 20,
+  });
+  await page.mouse.up();
+}
+
 async function seedTwoSides(
   page: Parameters<typeof test>[0]["page"],
   tokenOne: string,
@@ -145,5 +169,38 @@ test.describe("Side switch + delete preview consistency", () => {
 
     await page.waitForTimeout(1500);
     await expect(page.locator('[data-testid^="side-tray-item-"]')).toHaveCount(1);
+  });
+
+  test("context-menu delete still works after side reorder", async ({ page }) => {
+    const removedToken = "ZX";
+    const survivorToken = "QJ";
+    await seedTwoSides(page, removedToken, survivorToken);
+
+    await dragSideByIndex(page, 0, 1);
+    await expect
+      .poll(
+        async () =>
+          ((await page.getByTestId("side-tray-item-0").textContent()) ?? "").includes(
+            survivorToken,
+          ),
+        { timeout: 12000 },
+      )
+      .toBeTruthy();
+
+    await deleteSideViaTrayContextMenu(page, 1);
+    await expect
+      .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
+        timeout: 15000,
+      })
+      .toBe(1);
+    await expect
+      .poll(
+        async () =>
+          ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").includes(
+            removedToken,
+          ),
+        { timeout: 12000 },
+      )
+      .toBeFalsy();
   });
 });

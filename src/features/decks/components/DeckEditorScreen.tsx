@@ -5,6 +5,7 @@ import {
   useAddSide,
   useDeleteSide,
   useEditorCard,
+  useReorderSides,
   useSaveSide,
 } from "@/features/cards/api/useCardsApi";
 import { useAutosaveSide } from "@/features/cards/autosave/useAutosaveSide";
@@ -79,6 +80,7 @@ export function DeckEditorScreen({
   const updateSharing = useUpdateSharing();
   const addSide = useAddSide();
   const deleteSide = useDeleteSide();
+  const reorderSides = useReorderSides();
   const saveSide = useSaveSide();
 
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>(preselectedCardId);
@@ -303,6 +305,23 @@ export function DeckEditorScreen({
               setActivePreviewCardId(selectedCardId);
             }
             setActiveSideIndex(deletionPlan.nextIndex);
+          }}
+          onReorderSides={async (orderedSideIds) => {
+            if (!selectedCard) return;
+            if (orderedSideIds.length !== sortedSides.length) return;
+
+            const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? null;
+            if (!activeSide) return;
+
+            await autosave.flush();
+            await reorderSides({ cardId: selectedCard._id, orderedSideIds });
+
+            const nextActiveIndex = orderedSideIds.findIndex(
+              (sideId) => String(sideId) === String(activeSide._id),
+            );
+            if (nextActiveIndex >= 0) {
+              setActiveSideIndex(nextActiveIndex);
+            }
           }}
         />
       </div>

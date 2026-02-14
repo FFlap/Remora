@@ -43,3 +43,7 @@ export function useAddSide() {
 export function useDeleteSide() {
   return useMutation(api.cardSides.deleteSide);
 }
+
+export function useReorderSides() {
+  return useMutation(api.cardSides.reorder);
+}

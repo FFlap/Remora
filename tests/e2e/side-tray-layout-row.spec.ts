@@ -162,6 +162,81 @@ async function expectTopControlsDoNotOverlap(page: Parameters<typeof test>[0]["p
   expect(boxesOverlap(modeBox, historyBox)).toBeFalsy();
 }
 
+async function setSideToken(
+  page: Parameters<typeof test>[0]["page"],
+  sideIndex: number,
+  token: string,
+) {
+  await page.getByTestId("mode-quick-button").click();
+  await page.getByTestId(`side-tray-item-${sideIndex}`).click();
+  await expect(page.getByTestId(`side-tray-item-${sideIndex}`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  const editor = page.locator('.quick-editor-input-panel [contenteditable="true"]').first();
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.press(`${process.platform === "darwin" ? "Meta" : "Control"}+A`);
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText(token);
+
+  await expect
+    .poll(async () => ((await editor.textContent()) ?? "").includes(token), { timeout: 12000 })
+    .toBeTruthy();
+  await expect
+    .poll(
+      async () =>
+        ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").includes(token),
+      { timeout: 12000 },
+    )
+    .toBeTruthy();
+  // Let debounced autosave persist before side switches/reorders.
+  await page.waitForTimeout(900);
+}
+
+function getSideTokenOrder(page: Parameters<typeof test>[0]["page"], tokens: string[]) {
+  return page.locator('[data-testid^="side-tray-item-"]').evaluateAll(
+    (nodes, allTokens) =>
+      nodes.map((node) => {
+        const text = node.textContent ?? "";
+        const found = allTokens.find((token) => text.includes(token));
+        return found ?? "";
+      }),
+    tokens,
+  );
+}
+
+async function dragSideByToken(
+  page: Parameters<typeof test>[0]["page"],
+  sourceToken: string,
+  targetToken: string,
+) {
+  const source = page
+    .locator('[data-testid^="side-tray-item-"]')
+    .filter({ hasText: sourceToken })
+    .first();
+  const target = page
+    .locator('[data-testid^="side-tray-item-"]')
+    .filter({ hasText: targetToken })
+    .first();
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  if (!sourceBox || !targetBox) return;
+
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+    steps: 20,
+  });
+  await page.mouse.up();
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Keep all tray-layout viewport assertions in one describe for deterministic editor setup.
 test.describe("Bottom side tray row layout", () => {
   test("keeps side tray as a dedicated row in quick and creative modes", async ({ page }) => {
@@ -274,6 +349,59 @@ test.describe("Bottom side tray row layout", () => {
     await expect
       .poll(() => tray.evaluate((node) => node.scrollLeft), { timeout: 4000 })
       .toBeGreaterThan(before + 1);
+  });
+
+  test("reorders sides by dragging full tiles, keeps active side content, and persists after reload", async ({
+    page,
+  }) => {
+    const tokenA = `SIDE_A_${Date.now()}`;
+    const tokenB = `SIDE_B_${Date.now()}`;
+    const tokenC = `SIDE_C_${Date.now()}`;
+    await createDeckAndOpenEditor(page);
+
+    await setSideToken(page, 0, tokenA);
+    await setSideToken(page, 1, tokenB);
+    await page.getByTestId("side-tray-add-side").click();
+    await expect(page.getByTestId("side-tray-item-2")).toBeVisible({ timeout: 12000 });
+    await setSideToken(page, 2, tokenC);
+
+    await page
+      .locator('[data-testid^="side-tray-item-"]')
+      .filter({ hasText: tokenB })
+      .first()
+      .click();
+    await expect
+      .poll(
+        async () =>
+          ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").includes(
+            tokenB,
+          ),
+        { timeout: 12000 },
+      )
+      .toBeTruthy();
+
+    await dragSideByToken(page, tokenB, tokenC);
+
+    const expectedOrder = [tokenA, tokenC, tokenB];
+    await expect
+      .poll(async () => getSideTokenOrder(page, [tokenA, tokenB, tokenC]))
+      .toEqual(expectedOrder);
+    await expect
+      .poll(
+        async () =>
+          ((await page.getByTestId("quick-live-preview-card").textContent()) ?? "").includes(
+            tokenB,
+          ),
+        { timeout: 12000 },
+      )
+      .toBeTruthy();
+
+    const orderBeforeReload = await getSideTokenOrder(page, [tokenA, tokenB, tokenC]);
+    await page.reload();
+    await expect(page.getByTestId("editor-side-tray-row")).toBeVisible();
+    await expect
+      .poll(async () => getSideTokenOrder(page, [tokenA, tokenB, tokenC]), { timeout: 12000 })
+      .toEqual(orderBeforeReload);
   });
 
   test("shows side-tray context menu and closes on outside click or escape", async ({ page }) => {
