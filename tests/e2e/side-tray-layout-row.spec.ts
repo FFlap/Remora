@@ -193,9 +193,46 @@ test.describe("Bottom side tray row layout", () => {
       })
       .toBe(26);
 
-    await page.getByTestId("side-tray").evaluate((node) => {
-      node.scrollLeft = node.scrollWidth;
+    await expect
+      .poll(async () =>
+        page
+          .getByTestId("side-tray-add-side")
+          .evaluate((node) => !node.closest('[data-testid="side-tray"]')),
+      )
+      .toBeTruthy();
+
+    const pinMetrics = await page.evaluate(() => {
+      const tray = document.querySelector('[data-testid="side-tray"]') as HTMLElement | null;
+      const addTile = document.querySelector(
+        '[data-testid="side-tray-add-side"]',
+      ) as HTMLElement | null;
+      const firstSide = document.querySelector(
+        '[data-testid="side-tray-item-0"]',
+      ) as HTMLElement | null;
+      if (!tray || !addTile || !firstSide) return null;
+
+      tray.scrollLeft = 0;
+      const start = {
+        scrollLeft: tray.scrollLeft,
+        addTileX: addTile.getBoundingClientRect().left,
+        firstSideX: firstSide.getBoundingClientRect().left,
+      };
+
+      tray.scrollLeft = Math.max(0, tray.scrollWidth - tray.clientWidth);
+      const end = {
+        scrollLeft: tray.scrollLeft,
+        addTileX: addTile.getBoundingClientRect().left,
+        firstSideX: firstSide.getBoundingClientRect().left,
+      };
+
+      return { start, end };
     });
+    expect(pinMetrics).not.toBeNull();
+    if (!pinMetrics) return;
+
+    expect(pinMetrics.end.scrollLeft).toBeGreaterThan(pinMetrics.start.scrollLeft + 1);
+    expect(Math.abs(pinMetrics.end.addTileX - pinMetrics.start.addTileX)).toBeLessThanOrEqual(2);
+    expect(Math.abs(pinMetrics.end.firstSideX - pinMetrics.start.firstSideX)).toBeGreaterThan(20);
 
     const lastSide = page.getByTestId("side-tray-item-25");
     await lastSide.scrollIntoViewIfNeeded();
@@ -239,33 +276,88 @@ test.describe("Bottom side tray row layout", () => {
       .toBeGreaterThan(before + 1);
   });
 
-  test("keeps add, delete, select behavior and min-side delete guard", async ({ page }) => {
+  test("shows side-tray context menu and closes on outside click or escape", async ({ page }) => {
     await createDeckAndOpenEditor(page);
 
-    const deleteButton = page.getByTestId("side-tray-delete-side");
-    await expect(deleteButton).toBeEnabled();
+    const firstSide = page.getByTestId("side-tray-item-0");
+    await expect(firstSide).toBeVisible();
+    await firstSide.click({ button: "right" });
 
-    await page.getByTestId("side-tray-add-side").click();
+    const sideMenu = page.getByRole("menu", { name: "Side tray context menu" });
+    await expect(sideMenu).toBeVisible();
+    await expect(sideMenu.getByRole("button", { name: "Delete side" })).toBeVisible();
+
+    await page.mouse.click(5, 5);
+    await expect(sideMenu).toHaveCount(0);
+
+    await firstSide.click({ button: "right" });
+    await expect(sideMenu).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sideMenu).toHaveCount(0);
+  });
+
+  test("keeps add, right-click delete, select behavior and min-side delete guard", async ({
+    page,
+  }) => {
+    await createDeckAndOpenEditor(page);
+
+    const addTile = page.getByTestId("side-tray-add-side");
+    await expect(addTile).toBeVisible();
+
+    const addTileInTray = await addTile.evaluate((node) => {
+      return Boolean(node.closest('[data-testid="side-tray"]'));
+    });
+    expect(addTileInTray).toBeTruthy();
+
+    const firstSide = page.getByTestId("side-tray-item-0");
+    await expect(firstSide).toBeVisible();
+    const [addTileBox, firstSideBox] = await Promise.all([
+      addTile.boundingBox(),
+      firstSide.boundingBox(),
+    ]);
+    expect(addTileBox).not.toBeNull();
+    expect(firstSideBox).not.toBeNull();
+    if (!addTileBox || !firstSideBox) return;
+    expect(Math.abs(addTileBox.width - firstSideBox.width)).toBeLessThanOrEqual(2);
+
+    await addTile.click();
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
         timeout: 10000,
       })
       .toBe(3);
-    await expect(deleteButton).toBeEnabled();
 
-    await page.getByTestId("side-tray-item-1").click();
-    await expect(page.getByTestId("side-tray-item-1")).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("side-tray-item-0").click();
+    await expect(page.getByTestId("side-tray-item-0")).toHaveAttribute("aria-pressed", "true");
 
-    await deleteButton.click();
-    await deleteButton.click();
+    await page.getByTestId("side-tray-item-1").click({ button: "right" });
+    const sideMenu = page.getByRole("menu", { name: "Side tray context menu" });
+    await expect(sideMenu).toBeVisible();
+    await sideMenu.getByRole("button", { name: "Delete side" }).click();
+
+    await expect
+      .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
+        timeout: 10000,
+      })
+      .toBe(2);
+    await expect(page.getByTestId("side-tray-item-0")).toHaveAttribute("aria-pressed", "true");
+
+    await page.getByTestId("side-tray-item-0").click({ button: "right" });
+    await expect(sideMenu).toBeVisible();
+    await sideMenu.getByRole("button", { name: "Delete side" }).click();
+
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
         timeout: 10000,
       })
       .toBe(1);
+
     await page.getByTestId("side-tray-item-0").click();
     await expect(page.getByTestId("side-tray-item-0")).toHaveAttribute("aria-pressed", "true");
-    await expect(deleteButton).toBeDisabled();
+
+    await page.getByTestId("side-tray-item-0").click({ button: "right" });
+    await expect(sideMenu).toBeVisible();
+    await expect(sideMenu.getByRole("button", { name: "Delete side" })).toBeDisabled();
   });
 
   test("keeps quick input, preview, and bottom tray visible across responsive viewports", async ({

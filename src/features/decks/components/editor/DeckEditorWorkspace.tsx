@@ -1,5 +1,14 @@
 import { PenSquare, Plus, Redo2, Shapes, Trash2, Undo2 } from "lucide-react";
-import { lazy, Suspense, useCallback, type WheelEvent } from "react";
+import {
+  lazy,
+  type MouseEvent as ReactMouseEvent,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type WheelEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-model/ops";
@@ -44,8 +53,14 @@ type DeckEditorWorkspaceProps = {
   activeSideIndex: number;
   onSelectSide: (index: number) => void | Promise<void>;
   onAddSide: () => Promise<void>;
-  onDeleteSide: () => Promise<void>;
+  onDeleteSide: (sideIndex: number) => Promise<void>;
 };
+
+type SideTrayContextMenuState = {
+  x: number;
+  y: number;
+  sideIndex: number;
+} | null;
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Workspace intentionally composes mode controls, editor region, and side tray in one UI shell.
 export function DeckEditorWorkspace({
@@ -62,6 +77,11 @@ export function DeckEditorWorkspace({
 }: DeckEditorWorkspaceProps) {
   const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0];
   const editorKey = `${selectedCard?._id ?? "none"}:${activeSide?._id ?? "none"}:${editorMode}`;
+  const sideTrayScrollRef = useRef<HTMLDivElement | null>(null);
+  const sideTrayStripRef = useRef<HTMLDivElement | null>(null);
+  const sideTrayContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const [pinAddTileRight, setPinAddTileRight] = useState(false);
+  const [sideContextMenu, setSideContextMenu] = useState<SideTrayContextMenuState>(null);
   const applyArray = useCallback(
     (
       operations: SideOperation[],
@@ -104,6 +124,126 @@ export function DeckEditorWorkspace({
     event.preventDefault();
     tray.scrollLeft = nextScrollLeft;
   }, []);
+  const closeSideContextMenu = useCallback(() => {
+    setSideContextMenu(null);
+  }, []);
+
+  const openSideContextMenu = useCallback(
+    (event: ReactMouseEvent<HTMLElement>, sideIndex: number) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSideContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        sideIndex,
+      });
+    },
+    [],
+  );
+  const recomputeAddTilePinning = useCallback(() => {
+    const tray = sideTrayScrollRef.current;
+    const strip = sideTrayStripRef.current;
+    if (!tray || !strip) return;
+
+    const sideCount = sortedSides.length;
+    if (sideCount <= 0) {
+      setPinAddTileRight(false);
+      return;
+    }
+
+    const trayWidth = tray.clientWidth;
+    if (!Number.isFinite(trayWidth) || trayWidth <= 1) return;
+
+    const stripStyle = getComputedStyle(strip);
+    const gapPx = Number.parseFloat(stripStyle.columnGap || stripStyle.gap || "0");
+    const firstSideItem = strip.querySelector(
+      '[data-testid^="side-tray-item-"]',
+    ) as HTMLElement | null;
+    const addTileWidth = firstSideItem?.getBoundingClientRect().width ?? 146;
+    const inlineOverflow = tray.scrollWidth > trayWidth + 1;
+    const projectedInlineWidth =
+      strip.scrollWidth + addTileWidth + (strip.scrollWidth > 1 ? Math.max(0, gapPx) : 0);
+    const wouldOverflowIfInline = projectedInlineWidth > trayWidth + 1;
+
+    setPinAddTileRight((current) => (current ? wouldOverflowIfInline : inlineOverflow));
+  }, [sortedSides.length]);
+
+  useEffect(() => {
+    const tray = sideTrayScrollRef.current;
+    const strip = sideTrayStripRef.current;
+    if (!tray || !strip) return;
+
+    const observer = new ResizeObserver(() => {
+      recomputeAddTilePinning();
+    });
+    observer.observe(tray);
+    observer.observe(strip);
+    const rafId = window.requestAnimationFrame(() => {
+      recomputeAddTilePinning();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [recomputeAddTilePinning]);
+
+  useEffect(() => {
+    if (!sideContextMenu) return;
+
+    const onWindowMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && sideTrayContextMenuRef.current?.contains(target)) {
+        return;
+      }
+      closeSideContextMenu();
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeSideContextMenu();
+      }
+    };
+
+    window.addEventListener("mousedown", onWindowMouseDown);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("mousedown", onWindowMouseDown);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [closeSideContextMenu, sideContextMenu]);
+
+  const addSideTile = (
+    <button
+      type="button"
+      data-testid="side-tray-add-side"
+      aria-label="Add Side"
+      onClick={() => {
+        void onAddSide();
+      }}
+      className="group side-tray-item side-tray-add-item rounded-lg border border-dashed border-border bg-background/70 p-2 text-left transition-all hover:border-foreground/50 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25"
+    >
+      <div
+        className="side-tray-add-preview"
+        style={{
+          aspectRatio: String(
+            sideHistory.present.layout.quickLayout.cardRatio > 0
+              ? sideHistory.present.layout.quickLayout.cardRatio
+              : 1.6,
+          ),
+        }}
+        aria-hidden="true"
+      >
+        <Plus className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-foreground" />
+      </div>
+      <p
+        className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-transparent select-none"
+        aria-hidden="true"
+      >
+        Add Side
+      </p>
+      <span className="sr-only">Add Side</span>
+    </button>
+  );
 
   if (!selectedCard) {
     return (
@@ -224,11 +364,15 @@ export function DeckEditorWorkspace({
         >
           <div className="deck-editor-side-tray-inner flex w-full min-w-0 flex-wrap items-start gap-3 md:flex-nowrap md:items-center">
             <div
+              ref={sideTrayScrollRef}
               className="side-tray-scroll flex-1 min-w-0 overflow-x-auto"
               data-testid="side-tray"
               onWheel={handleSideTrayWheel}
             >
-              <div className="side-tray-strip flex w-max min-w-max flex-nowrap items-start gap-3 pr-2">
+              <div
+                ref={sideTrayStripRef}
+                className="side-tray-strip flex w-max min-w-max flex-nowrap items-start gap-3 pr-2"
+              >
                 {sortedSides.map((side) => {
                   const isActive = side.index === activeSideIndex;
                   const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);
@@ -241,6 +385,7 @@ export function DeckEditorWorkspace({
                       onClick={() => {
                         void onSelectSide(side.index);
                       }}
+                      onContextMenu={(event) => openSideContextMenu(event, side.index)}
                       className={cn(
                         "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
                         isActive
@@ -255,31 +400,49 @@ export function DeckEditorWorkspace({
                     </button>
                   );
                 })}
+                {!pinAddTileRight ? addSideTile : null}
               </div>
             </div>
 
-            <div className="deck-editor-side-tray-actions flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                data-testid="side-tray-add-side"
-                onClick={onAddSide}
-              >
-                <Plus className="h-4 w-4" /> Add Side
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                data-testid="side-tray-delete-side"
-                disabled={sortedSides.length <= 1}
-                onClick={onDeleteSide}
-              >
-                <Trash2 className="h-4 w-4" /> Delete Side
-              </Button>
-            </div>
+            {pinAddTileRight ? (
+              <div className="deck-editor-side-tray-actions flex items-center gap-2">
+                {addSideTile}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
+      {sideContextMenu ? (
+        <div
+          ref={sideTrayContextMenuRef}
+          className="fixed z-50 min-w-[170px] rounded-lg border border-border bg-background py-1 shadow-lg"
+          style={{ left: sideContextMenu.x, top: sideContextMenu.y }}
+          role="menu"
+          aria-label="Side tray context menu"
+          data-testid="side-tray-context-menu"
+        >
+          <button
+            type="button"
+            data-testid="side-tray-context-delete"
+            disabled={sortedSides.length <= 1}
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs",
+              sortedSides.length <= 1
+                ? "cursor-not-allowed bg-muted/50 text-muted-foreground"
+                : "text-destructive hover:bg-destructive/10",
+            )}
+            onClick={() => {
+              if (sortedSides.length <= 1) return;
+              const targetIndex = sideContextMenu.sideIndex;
+              closeSideContextMenu();
+              void onDeleteSide(targetIndex);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete side
+          </button>
+        </div>
+      ) : null}
     </main>
   );
 }

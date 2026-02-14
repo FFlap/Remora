@@ -20,6 +20,51 @@ import type { DeckEditorCardData, DeckEditShellData } from "@/features/decks/typ
 import { useUpdateSharing } from "@/features/sharing/api/useSharingApi";
 import type { Id } from "@/lib/convexApi";
 
+type EditorCardSide = DeckEditorCardData["sides"][number];
+
+function resolveSideDeletion({
+  sortedSides,
+  activeSideIndex,
+  sideIndex,
+}: {
+  sortedSides: EditorCardSide[];
+  activeSideIndex: number;
+  sideIndex: number;
+}) {
+  const sideToDelete = sortedSides.find((side) => side.index === sideIndex) ?? null;
+  if (!sideToDelete) {
+    return null;
+  }
+
+  const deletingActiveSide = sideIndex === activeSideIndex;
+  const deletingSideBeforeActive = sideIndex < activeSideIndex;
+  const currentActiveSide = sortedSides.find((side) => side.index === activeSideIndex) ?? null;
+  let fallbackSideForActiveDelete = sortedSides.find((side) => side.index > sideIndex) ?? null;
+  if (!fallbackSideForActiveDelete) {
+    const previousSides = sortedSides.filter((side) => side.index < sideIndex);
+    fallbackSideForActiveDelete =
+      previousSides.length > 0 ? previousSides[previousSides.length - 1] : null;
+  }
+
+  const fallbackSide = deletingActiveSide ? fallbackSideForActiveDelete : currentActiveSide;
+  let nextIndex = activeSideIndex;
+  if (deletingActiveSide) {
+    if (fallbackSide && fallbackSide.index > sideIndex) {
+      nextIndex = sideIndex;
+    } else {
+      nextIndex = Math.max(0, sideIndex - 1);
+    }
+  } else if (deletingSideBeforeActive) {
+    nextIndex = Math.max(0, activeSideIndex - 1);
+  }
+
+  return {
+    sideToDelete,
+    fallbackSide,
+    nextIndex,
+  };
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Screen composes hook-driven editor orchestration across sidebar/workspace/header boundaries.
 export function DeckEditorScreen({
   deckId,
@@ -234,31 +279,30 @@ export function DeckEditorScreen({
             setActivePreviewCardId(selectedCardId);
             setActiveSideIndex(sortedSides.length);
           }}
-          onDeleteSide={async () => {
+          onDeleteSide={async (sideIndex) => {
             if (!selectedCard) return;
-            const sideToDelete = sortedSides.find((side) => side.index === activeSideIndex) ?? null;
-            const fallbackSide =
-              sortedSides.find((side) => side.index > activeSideIndex) ??
-              sortedSides[activeSideIndex - 1] ??
-              null;
-            const nextIndex =
-              fallbackSide && fallbackSide.index > activeSideIndex
-                ? activeSideIndex
-                : Math.max(0, activeSideIndex - 1);
+            const deletionPlan = resolveSideDeletion({
+              sortedSides,
+              activeSideIndex,
+              sideIndex,
+            });
+            if (!deletionPlan) return;
+
             await autosave.flush();
-            await deleteSide({ cardId: selectedCard._id, index: activeSideIndex });
-            if (sideToDelete) {
-              sideSnapshotRef.current.delete(`${selectedCardId ?? ""}:${String(sideToDelete._id)}`);
-            }
-            if (fallbackSide) {
+            await deleteSide({ cardId: selectedCard._id, index: sideIndex });
+            sideSnapshotRef.current.delete(
+              `${selectedCardId ?? ""}:${String(deletionPlan.sideToDelete._id)}`,
+            );
+            if (deletionPlan.fallbackSide) {
               lastLoadedSideKeyRef.current = null;
-              const snapshotKey = `${selectedCardId ?? ""}:${String(fallbackSide._id)}`;
+              const snapshotKey = `${selectedCardId ?? ""}:${String(deletionPlan.fallbackSide._id)}`;
               const nextSide =
-                sideSnapshotRef.current.get(snapshotKey) ?? asSideModel(fallbackSide.sideModel);
+                sideSnapshotRef.current.get(snapshotKey) ??
+                asSideModel(deletionPlan.fallbackSide.sideModel);
               resetSideHistoryRef.current(nextSide);
               setActivePreviewCardId(selectedCardId);
             }
-            setActiveSideIndex(nextIndex);
+            setActiveSideIndex(deletionPlan.nextIndex);
           }}
         />
       </div>

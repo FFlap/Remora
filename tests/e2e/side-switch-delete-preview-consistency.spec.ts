@@ -50,6 +50,16 @@ async function assertActivePreviewToken(
   }
 }
 
+async function deleteSideViaTrayContextMenu(
+  page: Parameters<typeof test>[0]["page"],
+  sideIndex: number,
+) {
+  await page.getByTestId(`side-tray-item-${sideIndex}`).click({ button: "right" });
+  const sideMenu = page.getByRole("menu", { name: "Side tray context menu" });
+  await expect(sideMenu).toBeVisible();
+  await sideMenu.getByRole("button", { name: "Delete side" }).click();
+}
+
 async function seedTwoSides(
   page: Parameters<typeof test>[0]["page"],
   tokenOne: string,
@@ -99,14 +109,19 @@ test.describe("Side switch + delete preview consistency", () => {
     await expect(page.getByTestId("side-tray-item-0")).toHaveAttribute("aria-pressed", "true");
     await assertActivePreviewToken(page, survivorToken);
 
-    await page.getByTestId("side-tray-delete-side").click();
+    await deleteSideViaTrayContextMenu(page, 0);
     await expect
       .poll(async () => page.locator('[data-testid^="side-tray-item-"]').count(), {
         timeout: 15000,
       })
       .toBe(1);
     await expect(page.getByTestId("side-tray-item-0")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("side-tray-delete-side")).toBeDisabled();
+    await page.getByTestId("side-tray-item-0").click({ button: "right" });
+    await expect(
+      page.getByRole("menu", { name: "Side tray context menu" }).getByRole("button", {
+        name: "Delete side",
+      }),
+    ).toBeDisabled();
 
     await assertActivePreviewToken(page, removedToken);
     await expect
