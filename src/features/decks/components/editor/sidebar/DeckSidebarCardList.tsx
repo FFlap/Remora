@@ -3,6 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
+import { VERTICAL_BOUNDED_MODIFIERS } from "@/features/decks/components/editor/dnd/dragConstraints";
 import { SortableRow } from "@/features/decks/components/editor/sidebar/SortableRow";
 import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
@@ -46,12 +47,13 @@ export function DeckSidebarCardList({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      modifiers={VERTICAL_BOUNDED_MODIFIERS}
       onDragEnd={(event) => {
         void onCardDragEnd(section._id, cardIds, event);
       }}
     >
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
+        <div className="space-y-2" data-testid="deck-sidebar-card-list">
           {section.cards.map((card, index) => {
             const cardId = String(card._id);
             const isActive = cardId === selectedCardId;

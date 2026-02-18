@@ -15,7 +15,9 @@ async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"])
 }
 
 test.describe("Sidebar full-card drag", () => {
-  test("reorders cards by dragging the card preview itself (no drag handle)", async ({ page }) => {
+  test("reorders cards by dragging the card preview itself (no drag handle) and keeps drag bounded to the card lane", async ({
+    page,
+  }) => {
     await createDeckAndOpenEditor(page);
 
     await page.getByText("Section 1").first().click({ button: "right" });
@@ -33,12 +35,28 @@ test.describe("Sidebar full-card drag", () => {
 
     const firstBox = await cardPreviews.nth(0).boundingBox();
     const secondBox = await cardPreviews.nth(1).boundingBox();
+    const sidebarScroll = await page.getByTestId("deck-sidebar-scroll").boundingBox();
+    const cardList = await page.getByTestId("deck-sidebar-card-list").first().boundingBox();
     expect(firstBox).not.toBeNull();
     expect(secondBox).not.toBeNull();
-    if (!firstBox || !secondBox) return;
+    expect(sidebarScroll).not.toBeNull();
+    expect(cardList).not.toBeNull();
+    if (!firstBox || !secondBox || !sidebarScroll || !cardList) return;
 
     await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
     await page.mouse.down();
+    await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y - 520, {
+      steps: 20,
+    });
+
+    const draggedBox = await cardPreviews.nth(0).boundingBox();
+    expect(draggedBox).not.toBeNull();
+    if (!draggedBox) return;
+    expect(draggedBox.y).toBeGreaterThanOrEqual(cardList.y - 1);
+    expect(draggedBox.x).toBeGreaterThanOrEqual(sidebarScroll.x - 1);
+    expect(draggedBox.x + draggedBox.width).toBeLessThanOrEqual(
+      sidebarScroll.x + sidebarScroll.width + 1,
+    );
     await page.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height + 24, {
       steps: 24,
     });

@@ -48,9 +48,13 @@ export function DeckSidebarSectionItem({
 
   return (
     <SortableRow id={sectionId}>
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div
+        className="overflow-hidden rounded-lg border border-border bg-card"
+        data-testid="deck-sidebar-section-item"
+      >
         <button
           type="button"
+          data-testid="deck-sidebar-section-header"
           className="w-full bg-muted/90 px-2 py-1.5 backdrop-blur-sm border-b border-border text-left"
           onContextMenu={(event) => onSectionContextMenu(event, sectionId)}
           onClick={() => onToggleCollapsed(sectionId)}

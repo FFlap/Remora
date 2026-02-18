@@ -1,6 +1,7 @@
 import { closestCenter, DndContext, type DragEndEvent, type useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { VERTICAL_BOUNDED_MODIFIERS } from "@/features/decks/components/editor/dnd/dragConstraints";
 import { DeckSidebarSectionItem } from "@/features/decks/components/editor/sidebar/DeckSidebarSectionItem";
 import type { DeckEditShellSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
@@ -49,12 +50,13 @@ export function DeckSidebarSections({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      modifiers={VERTICAL_BOUNDED_MODIFIERS}
       onDragEnd={(event) => {
         void onSectionDragEnd(event);
       }}
     >
       <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
+        <div className="space-y-2" data-testid="deck-sidebar-sections-list">
           {sections.map((section) => {
             const sectionId = String(section._id);
 

@@ -404,6 +404,62 @@ test.describe("Bottom side tray row layout", () => {
       .toEqual(orderBeforeReload);
   });
 
+  test("keeps side dragging bounded to tray and before add tile when add is inline", async ({
+    page,
+  }) => {
+    await createDeckAndOpenEditor(page);
+    await page.setViewportSize({ width: 1500, height: 860 });
+
+    const tray = page.getByTestId("side-tray");
+    const addTile = page.getByTestId("side-tray-add-side");
+    const firstSide = page.getByTestId("side-tray-item-0");
+    await expect(tray).toBeVisible();
+    await expect(addTile).toBeVisible();
+    await expect(firstSide).toBeVisible();
+
+    const addTileIsInline = await addTile.evaluate((node) =>
+      Boolean(node.closest('[data-testid="side-tray"]')),
+    );
+    expect(addTileIsInline).toBeTruthy();
+
+    const trayBox = await tray.boundingBox();
+    const addTileBox = await addTile.boundingBox();
+    const firstSideBox = await firstSide.boundingBox();
+    expect(trayBox).not.toBeNull();
+    expect(addTileBox).not.toBeNull();
+    expect(firstSideBox).not.toBeNull();
+    if (!trayBox || !addTileBox || !firstSideBox) return;
+
+    await page.mouse.move(
+      firstSideBox.x + firstSideBox.width / 2,
+      firstSideBox.y + firstSideBox.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      trayBox.x + trayBox.width + 900,
+      firstSideBox.y + firstSideBox.height / 2,
+      {
+        steps: 30,
+      },
+    );
+
+    const draggedRight = await firstSide.boundingBox();
+    expect(draggedRight).not.toBeNull();
+    if (!draggedRight) return;
+    expect(draggedRight.x + draggedRight.width).toBeLessThanOrEqual(addTileBox.x + 1);
+    expect(draggedRight.x + draggedRight.width).toBeLessThanOrEqual(trayBox.x + trayBox.width + 1);
+
+    await page.mouse.move(trayBox.x - 900, firstSideBox.y + firstSideBox.height / 2, {
+      steps: 30,
+    });
+    const draggedLeft = await firstSide.boundingBox();
+    expect(draggedLeft).not.toBeNull();
+    if (!draggedLeft) return;
+    expect(draggedLeft.x).toBeGreaterThanOrEqual(trayBox.x - 1);
+
+    await page.mouse.up();
+  });
+
   test("shows side-tray context menu and closes on outside click or escape", async ({ page }) => {
     await createDeckAndOpenEditor(page);
 

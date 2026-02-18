@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { SideCardPreview } from "@/features/cards/components/SideCardPreview";
 import type { SideOperation } from "@/features/cards/side-model/ops";
 import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
+import { HORIZONTAL_BOUNDED_MODIFIERS } from "@/features/decks/components/editor/dnd/dragConstraints";
 import type { DeckEditorCardData } from "@/features/decks/types/editor";
 import type { Doc, Id } from "@/lib/convexApi";
 import { cn } from "@/lib/utils";
@@ -416,45 +417,53 @@ export function DeckEditorWorkspace({
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
+                  modifiers={HORIZONTAL_BOUNDED_MODIFIERS}
                   onDragStart={() => {
                     closeSideContextMenu();
                   }}
                   onDragEnd={handleSideDragEnd}
                 >
                   <SortableContext items={sideIds} strategy={horizontalListSortingStrategy}>
-                    {sortedSides.map((side) => {
-                      const isActive = side.index === activeSideIndex;
-                      const traySide = isActive ? sideHistory.present : asSideModel(side.sideModel);
-                      return (
-                        <SortableTraySide key={side._id} id={String(side._id)}>
-                          <button
-                            type="button"
-                            data-testid={`side-tray-item-${side.index}`}
-                            aria-pressed={isActive}
-                            onClick={() => {
-                              void onSelectSide(side.index);
-                            }}
-                            onContextMenu={(event) => openSideContextMenu(event, side.index)}
-                            className={cn(
-                              "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
-                              isActive
-                                ? "border-foreground ring-2 ring-foreground/20"
-                                : "border-border hover:border-foreground/50",
-                            )}
-                          >
-                            <SideCardPreview
-                              side={traySide}
-                              compact
-                              className="w-full"
-                              ariaHidden
-                            />
-                            <p className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground">
-                              Side {side.index + 1}
-                            </p>
-                          </button>
-                        </SortableTraySide>
-                      );
-                    })}
+                    <div
+                      className="side-tray-sortable-strip flex w-max min-w-max flex-nowrap items-start gap-3"
+                      data-testid="side-tray-sortable-strip"
+                    >
+                      {sortedSides.map((side) => {
+                        const isActive = side.index === activeSideIndex;
+                        const traySide = isActive
+                          ? sideHistory.present
+                          : asSideModel(side.sideModel);
+                        return (
+                          <SortableTraySide key={side._id} id={String(side._id)}>
+                            <button
+                              type="button"
+                              data-testid={`side-tray-item-${side.index}`}
+                              aria-pressed={isActive}
+                              onClick={() => {
+                                void onSelectSide(side.index);
+                              }}
+                              onContextMenu={(event) => openSideContextMenu(event, side.index)}
+                              className={cn(
+                                "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
+                                isActive
+                                  ? "border-foreground ring-2 ring-foreground/20"
+                                  : "border-border hover:border-foreground/50",
+                              )}
+                            >
+                              <SideCardPreview
+                                side={traySide}
+                                compact
+                                className="w-full"
+                                ariaHidden
+                              />
+                              <p className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+                                Side {side.index + 1}
+                              </p>
+                            </button>
+                          </SortableTraySide>
+                        );
+                      })}
+                    </div>
                   </SortableContext>
                 </DndContext>
                 {!pinAddTileRight ? addSideTile : null}
