@@ -288,7 +288,7 @@ export function QuickEditorContent({
       data-layout={layoutMode}
       data-testid="quick-editor-surface-grid"
     >
-      <div className="quick-editor-input-panel quick-editor-input-stack min-h-0 rounded-xl border border-border bg-background p-4">
+      <div className="quick-editor-input-panel quick-editor-input-stack min-h-0 rounded-xl bg-background p-4">
         <div className="quick-editor-panel-scroll flex min-h-0 flex-col space-y-4">
           <div className="flex items-center justify-between">
             {richTextBlocks.length > 1 ? (
@@ -420,7 +420,7 @@ export function QuickEditorContent({
 
       <div
         ref={previewPanelRef}
-        className="quick-editor-preview-panel quick-editor-preview-stack min-h-0 rounded-xl border border-border bg-background p-4"
+        className="quick-editor-preview-panel quick-editor-preview-stack min-h-0 rounded-xl bg-background p-4"
       >
         <div className="quick-editor-preview-inner flex min-h-0 flex-col gap-3">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
