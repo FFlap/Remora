@@ -277,7 +277,7 @@ export function QuickEditorContent({
             editorKey={richText.id}
             value={richText.lexical}
             frameRounded={false}
-            className="flex-1 min-h-0"
+            className="flex-1 min-h-0 !border-zinc-200"
             panelScrollable
             onImageInsert={onInsertImage}
             onYouTubeInsert={onInsertYouTube}
@@ -343,9 +343,9 @@ export function QuickEditorContent({
 
       <div
         ref={previewPanelRef}
-        className="quick-editor-preview-panel quick-editor-preview-stack min-h-0 rounded-xl bg-background p-4"
+        className="quick-editor-preview-panel quick-editor-preview-stack min-h-0 bg-muted/50"
       >
-        <div className="quick-editor-preview-inner flex min-h-0 flex-col gap-3">
+        <div className="quick-editor-preview-inner flex min-h-0 flex-col gap-3 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Live Preview
           </p>

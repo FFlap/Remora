@@ -61,7 +61,7 @@ type InsertButtonsProps = {
 };
 
 const iconButtonClass =
-  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground";
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-black transition-colors hover:bg-zinc-100 hover:text-black data-[active=true]:bg-zinc-100 data-[active=true]:text-black";
 
 function ToolbarTextColorControl({
   textColor,
@@ -137,7 +137,7 @@ function ToolbarOptionalButton({
   return (
     <button
       type="button"
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-black transition-colors hover:bg-zinc-100 hover:text-black"
       onClick={onClick}
       title={title}
     >
@@ -255,7 +255,7 @@ export function Toolbar({
   );
 
   return (
-    <div className="sticky top-0 z-10 flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted/50 p-1.5">
+    <div className="sticky top-0 z-10 flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-white p-1.5">
       <button
         type="button"
         data-active={formatState.isBold}

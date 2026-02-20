@@ -382,7 +382,7 @@ export function DeckEditorWorkspace({
           className={cn(
             "deck-editor-shell-content min-h-0 overflow-x-auto overflow-y-auto",
             editorMode === "quick"
-              ? "pt-0 pl-0 pr-3 pb-0 md:pr-4 md:pb-0 lg:pr-5 lg:pb-0 xl:pr-6 xl:pb-0"
+              ? "pt-0 pl-0 pr-0 pb-0 md:pr-0 md:pb-0 lg:pr-0 lg:pb-0 xl:pr-0 xl:pb-0"
               : "p-3 md:p-4 lg:p-5 xl:p-6",
           )}
           data-testid="editor-content-row"
@@ -405,7 +405,7 @@ export function DeckEditorWorkspace({
         </div>
 
         <div
-          className="deck-editor-side-tray-row border-t border-border bg-muted/20 px-3 md:px-4 py-3"
+          className="deck-editor-side-tray-row border-t border-border bg-muted/50 px-3 md:px-4 py-3"
           data-testid="editor-side-tray-row"
         >
           <div className="deck-editor-side-tray-inner flex w-full min-w-0 flex-wrap items-start gap-3 md:flex-nowrap md:items-center">

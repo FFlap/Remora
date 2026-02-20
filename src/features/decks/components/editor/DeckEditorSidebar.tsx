@@ -150,7 +150,7 @@ export function DeckEditorSidebar({
   };
 
   return (
-    <aside className="deck-editor-sidebar h-full border-r border-border bg-background flex flex-col flex-shrink-0">
+    <aside className="deck-editor-sidebar h-full border-r border-border bg-muted/50 flex flex-col flex-shrink-0">
       <DeckSidebarHeader />
 
       <div
