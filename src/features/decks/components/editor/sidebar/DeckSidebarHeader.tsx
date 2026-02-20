@@ -1,11 +1,18 @@
-export function DeckSidebarHeader() {
+import { CardSearchInput } from "@/features/cards/components/CardSearchInput";
+
+type DeckSidebarHeaderProps = {
+  searchValue: string;
+  onSearchChange: (nextValue: string) => void;
+};
+
+export function DeckSidebarHeader({ searchValue, onSearchChange }: DeckSidebarHeaderProps) {
   return (
     <div className="p-3 border-b border-border flex-shrink-0">
-      <div className="flex items-center gap-2">
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Card Position
-        </h3>
-      </div>
+      <CardSearchInput
+        value={searchValue}
+        onChange={onSearchChange}
+        dataTestId="deck-sidebar-search-input"
+      />
     </div>
   );
 }

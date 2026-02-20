@@ -8,6 +8,16 @@ export type DeckEditShellSection = Doc<"sections"> & {
   cards: DeckEditShellCard[];
 };
 
+export type DeckSidebarVisibleCard = {
+  card: DeckEditShellCard;
+  originalIndex: number;
+};
+
+export type DeckSidebarVisibleSection = {
+  section: DeckEditShellSection;
+  visibleCards: DeckSidebarVisibleCard[];
+};
+
 export type DeckEditShellData = {
   deck: Doc<"decks">;
   sections: DeckEditShellSection[];

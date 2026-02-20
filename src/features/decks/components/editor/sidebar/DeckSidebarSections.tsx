@@ -3,12 +3,13 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { VERTICAL_BOUNDED_MODIFIERS } from "@/features/decks/components/editor/dnd/dragConstraints";
 import { DeckSidebarSectionItem } from "@/features/decks/components/editor/sidebar/DeckSidebarSectionItem";
-import type { DeckEditShellSection } from "@/features/decks/types/editor";
+import type { DeckSidebarVisibleSection } from "@/features/decks/types/editor";
 import type { Id } from "@/lib/convexApi";
 
 type DeckSidebarSectionsProps = {
-  sections: DeckEditShellSection[];
+  sections: DeckSidebarVisibleSection[];
   sectionIds: Id<"sections">[];
+  dragEnabled: boolean;
   selectedCardId?: string;
   activeSidePreview: import("@/features/cards/side-model/types").SideModel;
   activePreviewCardId?: string;
@@ -34,6 +35,7 @@ type DeckSidebarSectionsProps = {
 export function DeckSidebarSections({
   sections,
   sectionIds,
+  dragEnabled,
   selectedCardId,
   activeSidePreview,
   activePreviewCardId,
@@ -46,6 +48,38 @@ export function DeckSidebarSections({
   onCardContextMenu,
   onToggleCollapsed,
 }: DeckSidebarSectionsProps) {
+  const content = (
+    <div className="space-y-2" data-testid="deck-sidebar-sections-list">
+      {sections.map(({ section, visibleCards }) => {
+        const sectionId = String(section._id);
+
+        return (
+          <DeckSidebarSectionItem
+            key={section._id}
+            section={section}
+            visibleCards={visibleCards}
+            sectionId={sectionId}
+            dragEnabled={dragEnabled}
+            isCollapsed={collapsedSections[sectionId] ?? false}
+            selectedCardId={selectedCardId}
+            activeSidePreview={activeSidePreview}
+            activePreviewCardId={activePreviewCardId}
+            sensors={sensors}
+            onToggleCollapsed={onToggleCollapsed}
+            onSelectCard={onSelectCard}
+            onCardDragEnd={onCardDragEnd}
+            onSectionContextMenu={onSectionContextMenu}
+            onCardContextMenu={onCardContextMenu}
+          />
+        );
+      })}
+    </div>
+  );
+
+  if (!dragEnabled) {
+    return content;
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -56,29 +90,7 @@ export function DeckSidebarSections({
       }}
     >
       <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2" data-testid="deck-sidebar-sections-list">
-          {sections.map((section) => {
-            const sectionId = String(section._id);
-
-            return (
-              <DeckSidebarSectionItem
-                key={section._id}
-                section={section}
-                sectionId={sectionId}
-                isCollapsed={collapsedSections[sectionId] ?? false}
-                selectedCardId={selectedCardId}
-                activeSidePreview={activeSidePreview}
-                activePreviewCardId={activePreviewCardId}
-                sensors={sensors}
-                onToggleCollapsed={onToggleCollapsed}
-                onSelectCard={onSelectCard}
-                onCardDragEnd={onCardDragEnd}
-                onSectionContextMenu={onSectionContextMenu}
-                onCardContextMenu={onCardContextMenu}
-              />
-            );
-          })}
-        </div>
+        {content}
       </SortableContext>
     </DndContext>
   );

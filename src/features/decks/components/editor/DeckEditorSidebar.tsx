@@ -7,7 +7,8 @@ import {
   useRemoveCard,
   useReorderCardsInSection,
 } from "@/features/cards/api/useCardsApi";
-import type { SideModel } from "@/features/cards/side-model/types";
+import { extractFrontSearchText } from "@/features/cards/preview";
+import { asSideModel, type SideModel } from "@/features/cards/side-model/types";
 import { DeckSidebarContextMenu } from "@/features/decks/components/editor/sidebar/DeckSidebarContextMenu";
 import { DeckSidebarHeader } from "@/features/decks/components/editor/sidebar/DeckSidebarHeader";
 import { DeckSidebarSections } from "@/features/decks/components/editor/sidebar/DeckSidebarSections";
@@ -17,7 +18,7 @@ import { useDeckSidebarReorderActions } from "@/features/decks/components/editor
 import { useDeckSidebarSectionActions } from "@/features/decks/components/editor/sidebar/useDeckSidebarSectionActions";
 import { useSidebarContextMenu } from "@/features/decks/components/editor/sidebar/useSidebarContextMenu";
 import { useSidebarSensors } from "@/features/decks/components/editor/sidebar/useSidebarSensors";
-import type { DeckEditShellData } from "@/features/decks/types/editor";
+import type { DeckEditShellData, DeckSidebarVisibleSection } from "@/features/decks/types/editor";
 import {
   useCreateSection,
   useRemoveSection,
@@ -96,9 +97,43 @@ export function DeckEditorSidebar({
 
   const sensors = useSidebarSensors();
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [searchValue, setSearchValue] = useState("");
   const sectionIds = useMemo(
     () => data.sections.map((section) => String(section._id) as Id<"sections">),
     [data.sections],
+  );
+  const normalizedSearchValue = searchValue.trim().toLowerCase();
+  const dragEnabled = normalizedSearchValue.length === 0;
+  const visibleSections = useMemo<DeckSidebarVisibleSection[]>(() => {
+    return data.sections
+      .map((section) => {
+        const sectionMatches =
+          normalizedSearchValue.length > 0 &&
+          section.title.toLowerCase().includes(normalizedSearchValue);
+        const visibleCards = section.cards
+          .map((card, originalIndex) => ({
+            card,
+            originalIndex,
+          }))
+          .filter(({ card }) => {
+            if (normalizedSearchValue.length === 0 || sectionMatches) {
+              return true;
+            }
+
+            const frontText = extractFrontSearchText(asSideModel(card.frontSide?.sideModel));
+            return frontText.toLowerCase().includes(normalizedSearchValue);
+          });
+
+        return {
+          section,
+          visibleCards,
+        };
+      })
+      .filter((section) => normalizedSearchValue.length === 0 || section.visibleCards.length > 0);
+  }, [data.sections, normalizedSearchValue]);
+  const visibleSectionIds = useMemo(
+    () => visibleSections.map((entry) => String(entry.section._id) as Id<"sections">),
+    [visibleSections],
   );
 
   const { contextMenu, closeContextMenu, openSectionContextMenu, openCardContextMenu } =
@@ -151,28 +186,38 @@ export function DeckEditorSidebar({
 
   return (
     <aside className="deck-editor-sidebar h-full border-r border-border bg-muted/50 flex flex-col flex-shrink-0">
-      <DeckSidebarHeader />
+      <DeckSidebarHeader searchValue={searchValue} onSearchChange={setSearchValue} />
 
       <div
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2"
         data-testid="deck-sidebar-scroll"
         onWheelCapture={scrollSidebarOnHoverWheel}
       >
-        <DeckSidebarSections
-          sections={data.sections}
-          sectionIds={sectionIds}
-          selectedCardId={selectedCardId}
-          activeSidePreview={activeSidePreview}
-          activePreviewCardId={activePreviewCardId}
-          collapsedSections={collapsedSections}
-          sensors={sensors}
-          onSectionDragEnd={onSectionDragEnd}
-          onCardDragEnd={onCardDragEnd}
-          onSelectCard={selectCard}
-          onSectionContextMenu={openSectionContextMenu}
-          onCardContextMenu={openCardContextMenu}
-          onToggleCollapsed={toggleSectionCollapsed}
-        />
+        {visibleSections.length > 0 ? (
+          <DeckSidebarSections
+            sections={visibleSections}
+            sectionIds={visibleSectionIds}
+            dragEnabled={dragEnabled}
+            selectedCardId={selectedCardId}
+            activeSidePreview={activeSidePreview}
+            activePreviewCardId={activePreviewCardId}
+            collapsedSections={collapsedSections}
+            sensors={sensors}
+            onSectionDragEnd={onSectionDragEnd}
+            onCardDragEnd={onCardDragEnd}
+            onSelectCard={selectCard}
+            onSectionContextMenu={openSectionContextMenu}
+            onCardContextMenu={openCardContextMenu}
+            onToggleCollapsed={toggleSectionCollapsed}
+          />
+        ) : (
+          <p
+            data-testid="deck-sidebar-no-results"
+            className="px-2 py-3 text-xs text-muted-foreground"
+          >
+            No matching cards.
+          </p>
+        )}
       </div>
 
       <div className="border-t border-border flex-shrink-0">
