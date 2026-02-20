@@ -183,7 +183,6 @@ export function QuickEditor({
       mediaElements={mediaElements}
       cardBackground={cardBackground}
       setActiveRichTextId={setActiveRichTextId}
-      onAddTextBlock={handleAddTextBlock}
       onInsertImage={handleInsertImage}
       onInsertYouTube={() => {
         const raw = window.prompt("YouTube URL");

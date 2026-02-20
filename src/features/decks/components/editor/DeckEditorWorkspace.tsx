@@ -261,7 +261,7 @@ export function DeckEditorWorkspace({
       onClick={() => {
         void onAddSide();
       }}
-      className="group side-tray-item side-tray-add-item rounded-lg border border-dashed border-border bg-background/70 p-2 text-left transition-all hover:border-foreground/50 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25"
+      className="group side-tray-item side-tray-add-item rounded-lg bg-transparent p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25"
     >
       <div
         className="side-tray-add-preview"
@@ -379,7 +379,12 @@ export function DeckEditorWorkspace({
         </div>
 
         <div
-          className="deck-editor-shell-content min-h-0 overflow-x-auto overflow-y-auto p-3 md:p-4 lg:p-5 xl:p-6"
+          className={cn(
+            "deck-editor-shell-content min-h-0 overflow-x-auto overflow-y-auto",
+            editorMode === "quick"
+              ? "pt-0 pl-0 pr-3 pb-0 md:pr-4 md:pb-0 lg:pr-5 lg:pb-0 xl:pr-6 xl:pb-0"
+              : "p-3 md:p-4 lg:p-5 xl:p-6",
+          )}
           data-testid="editor-content-row"
         >
           <div className="deck-editor-shell-content-inner flex h-full min-h-0 min-w-0 flex-col">
@@ -444,16 +449,18 @@ export function DeckEditorWorkspace({
                               }}
                               onContextMenu={(event) => openSideContextMenu(event, side.index)}
                               className={cn(
-                                "side-tray-item rounded-lg border bg-background p-2 text-left transition-all",
-                                isActive
-                                  ? "border-foreground ring-2 ring-foreground/20"
-                                  : "border-border hover:border-foreground/50",
+                                "side-tray-item rounded-lg bg-transparent p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20",
                               )}
                             >
                               <SideCardPreview
                                 side={traySide}
                                 compact
-                                className="w-full"
+                                className={cn(
+                                  "w-full transition-colors",
+                                  isActive
+                                    ? "border-foreground ring-2 ring-foreground/20"
+                                    : "hover:border-foreground/50",
+                                )}
                                 ariaHidden
                               />
                               <p className="mt-1.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground">

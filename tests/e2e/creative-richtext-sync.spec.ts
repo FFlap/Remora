@@ -62,7 +62,9 @@ test.describe("Creative + Quick Rich Text Sync", () => {
     await expect(page.getByTestId("quick-live-preview-card")).toContainText(
       "Quick to Creative Sync + Creative",
     );
-    await expect(page.getByRole("button", { name: "Text 2" })).toBeVisible();
+    const textBlockSelect = page.getByTestId("quick-text-block-select");
+    await expect(textBlockSelect).toBeVisible();
+    await textBlockSelect.selectOption({ label: "Text 2" });
 
     await page.getByTestId("mode-creative-button").click();
     await expect(creativeCanvas).toBeVisible();

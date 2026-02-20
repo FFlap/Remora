@@ -1,4 +1,6 @@
+import { Plus } from "lucide-react";
 import { useMemo, useState, type WheelEvent } from "react";
+import { Button } from "@/components/ui/button";
 import {
   useCreateCard,
   useMoveCardToSection,
@@ -149,7 +151,7 @@ export function DeckEditorSidebar({
 
   return (
     <aside className="deck-editor-sidebar h-full border-r border-border bg-background flex flex-col flex-shrink-0">
-      <DeckSidebarHeader onCreateSection={createSectionWithCard} />
+      <DeckSidebarHeader />
 
       <div
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2"
@@ -171,6 +173,19 @@ export function DeckEditorSidebar({
           onCardContextMenu={openCardContextMenu}
           onToggleCollapsed={toggleSectionCollapsed}
         />
+      </div>
+
+      <div className="border-t border-border flex-shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 w-full justify-center rounded-none border-x-0 border-b-0"
+          data-testid="deck-sidebar-add-section"
+          onClick={() => void createSectionWithCard()}
+        >
+          <Plus className="h-4 w-4" /> Section
+        </Button>
       </div>
 
       <DeckSidebarContextMenu

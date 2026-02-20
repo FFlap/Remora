@@ -259,14 +259,22 @@ function getEditableClassName(isInline: boolean, isPanelScrollable: boolean) {
   return "min-h-[230px] p-4 text-base leading-[1.45]";
 }
 
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: Editor composes Lexical setup, toolbar options, and plugin wiring in one render path.
 export function LexicalRichTextEditor({
   editorKey,
   value,
   onChange,
   onImageInsert,
   onYouTubeInsert,
+  textBlockOptions,
+  activeTextBlockId,
+  onActiveTextBlockChange,
+  cardBackgroundColor,
+  onCardBackgroundChange,
+  cardBackgroundColorInputTestId,
   onEditorApi,
   variant = "panel",
+  frameRounded = true,
   showToolbar = true,
   showTableButton = true,
   panelScrollable = false,
@@ -278,8 +286,15 @@ export function LexicalRichTextEditor({
   onChange: (nextValue: unknown) => void;
   onImageInsert?: () => void;
   onYouTubeInsert?: () => void;
+  textBlockOptions?: Array<{ id: string; label: string }>;
+  activeTextBlockId?: string;
+  onActiveTextBlockChange?: (id: string) => void;
+  cardBackgroundColor?: string;
+  onCardBackgroundChange?: (value: string) => void;
+  cardBackgroundColorInputTestId?: string;
   onEditorApi?: (api: LexicalRichTextEditorApi | null) => void;
   variant?: "panel" | "inline";
+  frameRounded?: boolean;
   showToolbar?: boolean;
   showTableButton?: boolean;
   panelScrollable?: boolean;
@@ -339,7 +354,8 @@ export function LexicalRichTextEditor({
     <LexicalComposer initialConfig={initialConfig}>
       <div
         className={cn(
-          "rounded-lg border border-input bg-background",
+          "border border-input bg-background",
+          frameRounded ? "rounded-lg" : "rounded-none",
           isInline ? "flex h-full w-full min-h-0 flex-col overflow-hidden" : "overflow-hidden",
           isPanelScrollable ? "flex min-h-0 flex-col" : "",
           !showToolbar && isInline ? "rounded-none border-0 bg-transparent shadow-none" : "",
@@ -352,11 +368,18 @@ export function LexicalRichTextEditor({
             onImageInsert={onImageInsert}
             onYouTubeInsert={onYouTubeInsert}
             showTableButton={showTableButton}
+            textBlockOptions={textBlockOptions}
+            activeTextBlockId={activeTextBlockId}
+            onActiveTextBlockChange={onActiveTextBlockChange}
+            cardBackgroundColor={cardBackgroundColor}
+            onCardBackgroundChange={onCardBackgroundChange}
+            cardBackgroundColorInputTestId={cardBackgroundColorInputTestId}
           />
         ) : null}
         <div
           className={cn(
             "relative",
+            isPanelScrollable ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "",
             isInline
               ? "remora-lexical-inline-scroll-host remora-preview-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
               : "",

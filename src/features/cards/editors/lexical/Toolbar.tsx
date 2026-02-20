@@ -45,6 +45,12 @@ type ToolbarProps = {
   onImageInsert?: () => void;
   onYouTubeInsert?: () => void;
   showTableButton?: boolean;
+  textBlockOptions?: Array<{ id: string; label: string }>;
+  activeTextBlockId?: string;
+  onActiveTextBlockChange?: (id: string) => void;
+  cardBackgroundColor?: string;
+  onCardBackgroundChange?: (value: string) => void;
+  cardBackgroundColorInputTestId?: string;
 };
 
 type InsertButtonsProps = {
@@ -82,6 +88,37 @@ function ToolbarTextColorControl({
         </span>
       </label>
     </div>
+  );
+}
+
+function ToolbarCardBackgroundControl({
+  backgroundColor,
+  onChange,
+  inputTestId,
+}: {
+  backgroundColor: string;
+  onChange: (value: string) => void;
+  inputTestId?: string;
+}) {
+  const safeColor = backgroundColor.trim() ? backgroundColor : "#ffffff";
+  return (
+    <label className="relative ml-1 block h-7 w-7 overflow-hidden rounded-md border border-border">
+      <input
+        type="color"
+        value={safeColor}
+        onChange={(event) => onChange(event.target.value)}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        title="Card Background"
+        aria-label="Card background color"
+        data-testid={inputTestId}
+      />
+      <span
+        className="flex h-full w-full items-center justify-center text-[9px] font-semibold leading-none"
+        style={{ backgroundColor: safeColor, color: contrastTextColor(safeColor) }}
+      >
+        BG
+      </span>
+    </label>
   );
 }
 
@@ -153,6 +190,12 @@ export function Toolbar({
   onImageInsert,
   onYouTubeInsert,
   showTableButton = true,
+  textBlockOptions,
+  activeTextBlockId,
+  onActiveTextBlockChange,
+  cardBackgroundColor,
+  onCardBackgroundChange,
+  cardBackgroundColorInputTestId,
 }: ToolbarProps) {
   const [editor] = useLexicalComposerContext();
   const [textColor, setTextColor] = useState("#111827");
@@ -212,7 +255,7 @@ export function Toolbar({
   );
 
   return (
-    <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border bg-muted/50 p-1.5">
+    <div className="sticky top-0 z-10 flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-muted/50 p-1.5">
       <button
         type="button"
         data-active={formatState.isBold}
@@ -265,6 +308,23 @@ export function Toolbar({
         ))}
       </select>
 
+      {onActiveTextBlockChange && (textBlockOptions?.length ?? 0) > 1 ? (
+        <select
+          value={activeTextBlockId}
+          onChange={(event) => onActiveTextBlockChange(event.target.value)}
+          className="h-7 min-w-[78px] rounded-md border border-border bg-background px-1.5 text-xs"
+          title="Text block"
+          data-testid="quick-text-block-select"
+          aria-label="Select text block"
+        >
+          {(textBlockOptions ?? []).map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : null}
+
       <AlignmentDropdown
         value={alignmentValue}
         onChange={applyBlockAlignment}
@@ -301,6 +361,17 @@ export function Toolbar({
       />
 
       <ToolbarTextColorControl textColor={textColor} onChange={applyTextColor} />
+
+      {onCardBackgroundChange ? (
+        <>
+          <div className="mx-1 h-6 w-px bg-border" />
+          <ToolbarCardBackgroundControl
+            backgroundColor={cardBackgroundColor ?? "#ffffff"}
+            onChange={onCardBackgroundChange}
+            inputTestId={cardBackgroundColorInputTestId}
+          />
+        </>
+      ) : null}
     </div>
   );
 }
