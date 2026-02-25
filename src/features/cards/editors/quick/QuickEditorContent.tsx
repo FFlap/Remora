@@ -284,7 +284,7 @@ export function QuickEditorContent({
             editorKey={richText.id}
             value={richText.lexical}
             frameRounded={false}
-            className="flex-1 min-h-0 !border-zinc-200"
+            className="flex-1 min-h-0 !border-0"
             panelScrollable
             onImageInsert={onInsertImage}
             onYouTubeInsert={onInsertYouTube}
