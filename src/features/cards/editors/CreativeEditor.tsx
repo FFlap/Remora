@@ -77,6 +77,151 @@ import type {
 import { LexicalRichTextEditor, type LexicalRichTextEditorApi } from "./LexicalRichTextEditor";
 import { AlignmentDropdown } from "./lexical/alignment-controls";
 
+function normalizeCreativeInlineDefaultAlignment(lexical: unknown) {
+  if (!lexical || typeof lexical !== "object") {
+    return lexical;
+  }
+
+  try {
+    const clone = JSON.parse(JSON.stringify(lexical)) as {
+      root?: {
+        children?: Array<{
+          type?: string;
+          format?: unknown;
+          children?: unknown[];
+        }>;
+      };
+    };
+
+    let changed = false;
+    const visit = (
+      nodes:
+        | Array<{
+            type?: string;
+            format?: unknown;
+            children?: unknown[];
+          }>
+        | undefined,
+    ) => {
+      if (!Array.isArray(nodes)) return;
+      for (const node of nodes) {
+        if (!node) continue;
+        if (
+          (node.type === "paragraph" || node.type === "heading" || node.type === "quote") &&
+          (node.format == null || node.format === "")
+        ) {
+          node.format = "center";
+          changed = true;
+        }
+        if (Array.isArray(node.children)) {
+          visit(
+            node.children as Array<{
+              type?: string;
+              format?: unknown;
+              children?: unknown[];
+            }>,
+          );
+        }
+      }
+    };
+
+    visit(clone.root?.children);
+    return changed ? clone : lexical;
+  } catch {
+    return lexical;
+  }
+}
+
+type CreativeAlignmentNode = {
+  type?: string;
+  format?: unknown;
+  children?: CreativeAlignmentNode[];
+};
+
+type CreativeLexicalRoot = {
+  root?: {
+    children?: CreativeAlignmentNode[];
+  };
+};
+
+function cloneCreativeLexical(lexical: unknown): CreativeLexicalRoot | null {
+  if (!lexical || typeof lexical !== "object") {
+    return null;
+  }
+  try {
+    return JSON.parse(JSON.stringify(lexical)) as CreativeLexicalRoot;
+  } catch {
+    return null;
+  }
+}
+
+function visitCreativeAlignmentNodes(
+  nodes: CreativeAlignmentNode[] | undefined,
+  visitor: (node: CreativeAlignmentNode) => void,
+) {
+  if (!Array.isArray(nodes)) return;
+  for (const node of nodes) {
+    if (!node) continue;
+    visitor(node);
+    if (Array.isArray(node.children)) {
+      visitCreativeAlignmentNodes(node.children, visitor);
+    }
+  }
+}
+
+function isCreativeDefaultAlignedBlock(type: string | undefined) {
+  return type === "paragraph" || type === "heading" || type === "quote";
+}
+
+function hasExplicitCreativeBlockAlignment(lexical: unknown) {
+  const clone = cloneCreativeLexical(lexical);
+  if (!clone) return false;
+
+  let hasExplicitAlignment = false;
+  visitCreativeAlignmentNodes(clone.root?.children, (node) => {
+    if (hasExplicitAlignment || !isCreativeDefaultAlignedBlock(node.type)) return;
+    if (typeof node.format !== "string") return;
+    if (
+      node.format === "left" ||
+      node.format === "center" ||
+      node.format === "right" ||
+      node.format === "justify" ||
+      node.format === "start" ||
+      node.format === "end"
+    ) {
+      hasExplicitAlignment = true;
+    }
+  });
+
+  return hasExplicitAlignment;
+}
+
+function stripImplicitCreativeCenterAlignment(lexical: unknown) {
+  const clone = cloneCreativeLexical(lexical);
+  if (!clone) {
+    return lexical;
+  }
+
+  let changed = false;
+  visitCreativeAlignmentNodes(clone.root?.children, (node) => {
+    if (!isCreativeDefaultAlignedBlock(node.type)) return;
+    if (node.format === "center") {
+      node.format = "";
+      changed = true;
+    }
+  });
+
+  return changed ? clone : lexical;
+}
+
+function serializeLexicalValue(value: unknown) {
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return "";
+  }
+}
+
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideModel updates.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Creative editor interaction flow is intentionally cohesive until hook extraction is complete.
 export function CreativeEditor({
@@ -105,6 +250,7 @@ export function CreativeEditor({
   const suppressNextSelectionClearedRef = useRef(false);
   const suppressSelectionClearedUntilRef = useRef(0);
   const inlineEditorApiRef = useRef<LexicalRichTextEditorApi | null>(null);
+  const creativeAlignmentTouchedIdsRef = useRef<Set<string>>(new Set());
 
   const [tool, setTool] = useState<ToolMode>("select");
   const [strokeColor, setStrokeColor] = useState("#0f172a");
@@ -1511,6 +1657,13 @@ export function CreativeEditor({
   const isInlineRichTextEditing = tool === "select" && Boolean(editingRichText);
   const canRenderInlineEditor =
     isInlineRichTextEditing && inlineEditorStyle !== null && editingRichText !== null;
+  const inlineEditorLexicalValue = useMemo(
+    () =>
+      editingRichText
+        ? normalizeCreativeInlineDefaultAlignment(editingRichText.lexical)
+        : editingRichText,
+    [editingRichText?.id, editingRichText?.lexical],
+  );
   const showContextMenu = contextMenu !== null && contextMenuElement !== null;
 
   return (
@@ -1825,6 +1978,9 @@ export function CreativeEditor({
                 disabled={!canApplyTextStyle}
                 triggerClassName="h-8 w-8"
                 onChange={(next) => {
+                  if (selectedRichText) {
+                    creativeAlignmentTouchedIdsRef.current.add(selectedRichText.id);
+                  }
                   inlineEditorApiRef.current?.applyAlignment(next);
                   inlineEditorApiRef.current?.focus();
                 }}
@@ -1924,6 +2080,7 @@ export function CreativeEditor({
                           lexical={element.lexical}
                           scale={1}
                           scrollOnHover
+                          defaultBlockAlignment="center"
                           className="h-full w-full leading-[1.35] text-[#0f172a]"
                         />
                       </div>
@@ -1947,17 +2104,33 @@ export function CreativeEditor({
                         showToolbar={false}
                         className="h-full w-full border-0 bg-transparent shadow-none"
                         editorKey={`creative-${editingRichText.id}`}
-                        value={editingRichText.lexical}
+                        value={inlineEditorLexicalValue}
                         onImageInsert={addImage}
                         onEditorApi={onInlineEditorApi}
                         onChange={(nextLexical) => {
                           pendingSelectionElementIdsRef.current = [editingRichText.id];
+                          const hasTouchedAlignment = creativeAlignmentTouchedIdsRef.current.has(
+                            editingRichText.id,
+                          );
+                          const hasSourceExplicitAlignment = hasExplicitCreativeBlockAlignment(
+                            editingRichText.lexical,
+                          );
+                          const lexicalForPersistence =
+                            hasTouchedAlignment || hasSourceExplicitAlignment
+                              ? nextLexical
+                              : stripImplicitCreativeCenterAlignment(nextLexical);
+                          if (
+                            serializeLexicalValue(lexicalForPersistence) ===
+                            serializeLexicalValue(editingRichText.lexical)
+                          ) {
+                            return;
+                          }
                           onApply(
                             [
                               {
                                 kind: "updateElement",
                                 elementId: editingRichText.id,
-                                patch: { lexical: nextLexical } as Partial<SideElement>,
+                                patch: { lexical: lexicalForPersistence } as Partial<SideElement>,
                               },
                             ],
                             {

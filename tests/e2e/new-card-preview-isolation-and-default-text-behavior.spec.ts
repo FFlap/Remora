@@ -116,7 +116,12 @@ function parsePx(value: string) {
 }
 
 function getComputedAlign(locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>) {
-  return locator.evaluate((node) => window.getComputedStyle(node).textAlign);
+  return locator.evaluate((node) => {
+    const align = window.getComputedStyle(node).textAlign.toLowerCase();
+    if (align === "start") return "left";
+    if (align === "end") return "right";
+    return align;
+  });
 }
 
 async function expectCenteredPreviewParagraph(
@@ -369,7 +374,7 @@ test.describe("New-card preview isolation + default text behavior", () => {
     const quickEditorParagraph = page
       .locator('.quick-editor-input-panel [contenteditable="true"] p')
       .first();
-    expect(await getComputedAlign(quickEditorParagraph)).toBe("center");
+    expect(await getComputedAlign(quickEditorParagraph)).toBe("left");
     await expectCenteredPreviewParagraph(quickRichText);
     await expectCenteredPreviewParagraph(sidebarRichText);
     await expectCenteredPreviewParagraph(sideTrayRichText);

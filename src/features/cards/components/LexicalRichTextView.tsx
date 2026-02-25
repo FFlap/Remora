@@ -19,6 +19,8 @@ type LexicalRoot = {
   };
 };
 
+type BlockAlignment = "left" | "center" | "right" | "justify";
+
 function sanitizeLinkUrl(url: string | undefined): string | null {
   const trimmed = (url ?? "").trim();
   if (!trimmed) return null;
@@ -192,10 +194,21 @@ function formatToStyle(format: unknown): CSSProperties {
   return style;
 }
 
-function paragraphAlign(format: unknown): CSSProperties["textAlign"] | undefined {
-  if (typeof format !== "string") return undefined;
-  if (format === "left" || format === "center" || format === "right" || format === "justify") {
-    return format;
+function paragraphAlign(
+  format: unknown,
+  defaultBlockAlignment?: BlockAlignment,
+): CSSProperties["textAlign"] | undefined {
+  if (typeof format === "string") {
+    if (format === "left" || format === "center" || format === "right" || format === "justify") {
+      return format;
+    }
+    if (format === "start") return "left";
+    if (format === "end") return "right";
+    if (format.length === 0) return defaultBlockAlignment;
+    return undefined;
+  }
+  if (format == null) {
+    return defaultBlockAlignment;
   }
   return undefined;
 }
@@ -210,9 +223,16 @@ function headingSize(tag: "h1" | "h2" | "h3", scale: number) {
   return Math.max(1, 20 * asScale(scale));
 }
 
-function renderChildren(node: LexicalNode, key: string, scale: number) {
+function renderChildren(
+  node: LexicalNode,
+  key: string,
+  scale: number,
+  defaultBlockAlignment?: BlockAlignment,
+) {
   if (!Array.isArray(node.children)) return null;
-  return node.children.map((child, index) => renderNode(child, `${key}-${index}`, scale));
+  return node.children.map((child, index) =>
+    renderNode(child, `${key}-${index}`, scale, defaultBlockAlignment),
+  );
 }
 
 function renderTextNode(node: LexicalNode, key: string, scale: number) {
@@ -230,7 +250,13 @@ function renderTextNode(node: LexicalNode, key: string, scale: number) {
   );
 }
 
-function renderParagraphNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+function renderParagraphNode(
+  node: LexicalNode,
+  key: string,
+  scale: number,
+  children: ReactNode,
+  defaultBlockAlignment?: BlockAlignment,
+) {
   const hasVisibleTextChild = Array.isArray(node.children)
     ? node.children.some((child) => {
         if (child.type === "linebreak") return true;
@@ -243,7 +269,10 @@ function renderParagraphNode(node: LexicalNode, key: string, scale: number, chil
     <p
       key={key}
       className="mb-[var(--lexical-block-spacing)] last:mb-0 leading-[1.35]"
-      style={{ textAlign: paragraphAlign(node.format), fontSize: baseFontSizePx(scale) }}
+      style={{
+        textAlign: paragraphAlign(node.format, defaultBlockAlignment),
+        fontSize: baseFontSizePx(scale),
+      }}
     >
       {hasVisibleTextChild ? children : <br />}
     </p>
@@ -263,7 +292,12 @@ function renderHeadingNode(node: LexicalNode, key: string, scale: number, childr
   );
 }
 
-function renderListNode(node: LexicalNode, key: string, scale: number, children: ReactNode) {
+function renderListNode(
+  node: LexicalNode,
+  key: string,
+  scale: number,
+  children: ReactNode,
+) {
   const listStyle: CSSProperties = {
     fontSize: baseFontSizePx(scale),
     textAlign: paragraphAlign(node.format),
@@ -312,8 +346,13 @@ function renderLinkNode(node: LexicalNode, key: string, children: ReactNode) {
   );
 }
 
-function renderNode(node: LexicalNode, key: string, scale: number): ReactNode {
-  const children = renderChildren(node, key, scale);
+function renderNode(
+  node: LexicalNode,
+  key: string,
+  scale: number,
+  defaultBlockAlignment?: BlockAlignment,
+): ReactNode {
+  const children = renderChildren(node, key, scale, defaultBlockAlignment);
 
   switch (node.type) {
     case "linebreak":
@@ -321,7 +360,7 @@ function renderNode(node: LexicalNode, key: string, scale: number): ReactNode {
     case "text":
       return renderTextNode(node, key, scale);
     case "paragraph":
-      return renderParagraphNode(node, key, scale, children);
+      return renderParagraphNode(node, key, scale, children, defaultBlockAlignment);
     case "heading":
       return renderHeadingNode(node, key, scale, children);
     case "list":
@@ -385,6 +424,7 @@ export function LexicalRichTextView({
   placeholder = "Text",
   dataTestId,
   scrollOnHover = false,
+  defaultBlockAlignment,
 }: {
   lexical: unknown;
   scale?: number;
@@ -392,6 +432,7 @@ export function LexicalRichTextView({
   placeholder?: string;
   dataTestId?: string;
   scrollOnHover?: boolean;
+  defaultBlockAlignment?: BlockAlignment;
 }) {
   const root = (lexical as LexicalRoot | undefined)?.root;
   const children = Array.isArray(root?.children) ? root.children : [];
@@ -420,7 +461,9 @@ export function LexicalRichTextView({
     >
       <div className={cn("remora-richtext-content", !hasText && "remora-richtext-content-empty")}>
         {hasText ? (
-          children.map((node, index) => renderNode(node, `node-${index}`, scale))
+          children.map((node, index) =>
+            renderNode(node, `node-${index}`, scale, defaultBlockAlignment),
+          )
         ) : (
           <span
             className="text-[#64748b]"

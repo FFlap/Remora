@@ -204,6 +204,7 @@ export function SideCardPreview({
                   lexical={element.lexical}
                   scale={1}
                   scrollOnHover
+                  defaultBlockAlignment="center"
                   className="h-full w-full leading-[1.35]"
                   dataTestId={dataTestId ? `${dataTestId}-richtext-${element.id}` : undefined}
                 />

@@ -100,7 +100,13 @@ function readVerticalCenterOffset(
 }
 
 function getComputedAlign(locator: ReturnType<Parameters<typeof test>[0]["page"]["locator"]>) {
-  return locator.evaluate((node) => window.getComputedStyle(node).textAlign);
+  return locator.evaluate((node) => {
+    const align = window.getComputedStyle(node).textAlign.toLowerCase();
+    if (align === "") return "left";
+    if (align === "start") return "left";
+    if (align === "end") return "right";
+    return align;
+  });
 }
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: This parity suite intentionally keeps setup and multi-surface assertions in one flow.
@@ -181,6 +187,10 @@ test.describe("Quick + preview centering parity", () => {
       .locator('[data-testid^="card-sidebar-preview-"] .remora-richtext-content p')
       .first();
 
+    expect(await getComputedAlign(quickEditorParagraph)).toBe("left");
+    expect(await getComputedAlign(quickPreviewParagraph)).toBe("center");
+    expect(await getComputedAlign(sidebarPreviewParagraph)).toBe("center");
+
     for (const option of ALIGNMENT_OPTIONS) {
       await page.getByRole("button", { name: "Text alignment" }).first().click({ force: true });
       await page.getByRole("menuitem", { name: option.label }).click();
@@ -224,5 +234,100 @@ test.describe("Quick + preview centering parity", () => {
     await expect(creativeParagraph).toBeVisible();
     const creativeAlign = await getComputedAlign(creativeParagraph);
     expect(creativeAlign).toBe("left");
+  });
+
+  test("new side keeps quick editor left on immediate typing while preview stays centered", async ({
+    page,
+  }) => {
+    await createDeckAndOpenEditor(page);
+    await page.getByTestId("mode-quick-button").click();
+
+    await page.getByTestId("side-tray-add-side").click();
+    await expect(page.getByTestId("side-tray-item-1")).toBeVisible({ timeout: 12_000 });
+    await page.getByTestId("side-tray-item-1").click({ force: true });
+
+    const quickEditor = page.locator('.quick-editor-input-panel [contenteditable="true"]').first();
+    await expect(quickEditor).toBeVisible();
+
+    const token = `RACE_${Date.now()}`;
+    await quickEditor.click({ force: true });
+    await page.keyboard.insertText(token);
+
+    await expect
+      .poll(async () => ((await quickEditor.textContent()) ?? "").includes(token), {
+        timeout: 12_000,
+      })
+      .toBeTruthy();
+
+    const quickEditorParagraph = page
+      .locator('.quick-editor-input-panel [contenteditable="true"] p')
+      .first();
+    const quickPreviewParagraph = page
+      .locator('[data-testid^="quick-live-preview-card-richtext-"] p')
+      .first();
+
+    await expect(quickPreviewParagraph).toContainText(token);
+    expect(await getComputedAlign(quickEditorParagraph)).toBe("left");
+    expect(await getComputedAlign(quickPreviewParagraph)).toBe("center");
+  });
+
+  test("typing in creative without alignment toggle does not force quick editor centered", async ({
+    page,
+  }) => {
+    await createDeckAndOpenEditor(page);
+    await page.getByTestId("mode-quick-button").click();
+
+    const quickEditor = page.locator('.quick-editor-input-panel [contenteditable="true"]').first();
+    await expect(quickEditor).toBeVisible({ timeout: 12_000 });
+    const quickToken = `QUICK_${Date.now()}`;
+    await quickEditor.click({ force: true });
+    await page.keyboard.insertText(quickToken);
+
+    const quickEditorParagraph = page
+      .locator('.quick-editor-input-panel [contenteditable="true"] p')
+      .first();
+    await expect(quickEditorParagraph).toContainText(quickToken);
+    expect(await getComputedAlign(quickEditorParagraph)).toBe("left");
+
+    await page.getByTestId("mode-creative-button").click();
+    await expect(page.getByTestId("creative-card-canvas")).toBeVisible({ timeout: 12_000 });
+
+    const staticRichText = page
+      .locator(
+        '[data-testid^="creative-richtext-static-"]:not([data-testid="creative-richtext-static-layer"])',
+      )
+      .first();
+    await expect(staticRichText).toBeVisible({ timeout: 12_000 });
+    await staticRichText.click({ force: true });
+
+    const editButton = page.getByRole("button", { name: "Edit Text" });
+    if (await editButton.isVisible()) {
+      await editButton.click();
+    }
+
+    const creativeInlineEditor = page.getByTestId("creative-inline-richtext-editor");
+    const creativeEditable = creativeInlineEditor.locator('[contenteditable="true"]').first();
+    await expect(creativeEditable).toBeVisible({ timeout: 12_000 });
+
+    const creativeToken = `CREATIVE_${Date.now()}`;
+    await creativeEditable.click({ force: true });
+    await page.keyboard.insertText(` ${creativeToken}`);
+    await expect(creativeInlineEditor).toContainText(creativeToken);
+
+    await page.getByTestId("mode-quick-button").click();
+    const quickEditorAgain = page.locator('.quick-editor-input-panel [contenteditable="true"]').first();
+    await expect(quickEditorAgain).toBeVisible({ timeout: 12_000 });
+
+    const quickEditorParagraphAgain = page
+      .locator('.quick-editor-input-panel [contenteditable="true"] p')
+      .first();
+    await expect(quickEditorParagraphAgain).toContainText(creativeToken);
+    expect(await getComputedAlign(quickEditorParagraphAgain)).toBe("left");
+
+    const quickPreviewParagraph = page
+      .locator('[data-testid^="quick-live-preview-card-richtext-"] p')
+      .first();
+    await expect(quickPreviewParagraph).toContainText(creativeToken);
+    expect(await getComputedAlign(quickPreviewParagraph)).toBe("center");
   });
 });

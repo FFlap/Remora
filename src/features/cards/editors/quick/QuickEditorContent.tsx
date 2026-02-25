@@ -17,6 +17,7 @@ type QuickEditorContentProps = {
   previewSides: Array<{ sideId: string; index: number; model: SideModel }>;
   activeSidePosition: number;
   richText: RichTextBlock;
+  editorLexicalValue: unknown;
   richTextBlocks: RichTextBlock[];
   mediaElements: Array<ImageBlock | EmbedBlock>;
   cardBackground: string;
@@ -25,6 +26,7 @@ type QuickEditorContentProps = {
   onInsertImage: () => void;
   onInsertYouTube: () => void;
   onBackgroundChange: (background: string) => void;
+  onQuickEdit: (id: string) => void;
   onApply: (
     operations: SideOperation[],
     meta?: {
@@ -45,6 +47,14 @@ const MIN_SPLIT_INPUT_WIDTH_PX = 560;
 const MIN_SPLIT_PREVIEW_WIDTH_PX = 500;
 const UNSTACK_INPUT_WIDTH_BUFFER_PX = 72;
 const UNSTACK_PREVIEW_WIDTH_BUFFER_PX = 64;
+
+function serializeLexicalValue(value: unknown) {
+  try {
+    return JSON.stringify(value ?? null);
+  } catch {
+    return "";
+  }
+}
 
 function parsePx(value: string | undefined) {
   const next = Number.parseFloat(value ?? "");
@@ -172,6 +182,7 @@ export function QuickEditorContent({
   previewSides,
   activeSidePosition,
   richText,
+  editorLexicalValue,
   richTextBlocks,
   mediaElements,
   cardBackground,
@@ -180,6 +191,7 @@ export function QuickEditorContent({
   onInsertImage,
   onInsertYouTube,
   onBackgroundChange,
+  onQuickEdit,
   onApply,
 }: QuickEditorContentProps) {
   const [layoutMode, setLayoutMode] = useState<QuickLayoutMode>("split");
@@ -188,6 +200,8 @@ export function QuickEditorContent({
   const previewStageRef = useRef<HTMLDivElement | null>(null);
   const previewCardRef = useRef<HTMLElement | null>(null);
   const editorContentRowRef = useRef<HTMLElement | null>(null);
+  const sourceLexicalSerialized = serializeLexicalValue(richText.lexical);
+  const editorLexicalSerialized = serializeLexicalValue(editorLexicalValue);
 
   const resolvePreviewCard = useCallback(() => {
     if (previewCardRef.current?.isConnected) {
@@ -282,7 +296,7 @@ export function QuickEditorContent({
         <div className="quick-editor-panel-scroll flex min-h-0 flex-col space-y-4">
           <LexicalRichTextEditor
             editorKey={richText.id}
-            value={richText.lexical}
+            value={editorLexicalValue}
             frameRounded={false}
             className="flex-1 min-h-0 !border-0"
             panelScrollable
@@ -300,6 +314,18 @@ export function QuickEditorContent({
             showTableButton={false}
             placeholder="Enter the front of your card..."
             onChange={(nextLexical) => {
+              const nextLexicalSerialized = serializeLexicalValue(nextLexical);
+              // Ignore initialization echo when quick editor is using a normalized display value.
+              if (
+                nextLexicalSerialized === editorLexicalSerialized &&
+                editorLexicalSerialized !== sourceLexicalSerialized
+              ) {
+                return;
+              }
+              if (nextLexicalSerialized === sourceLexicalSerialized) {
+                return;
+              }
+              onQuickEdit(richText.id);
               onApply(
                 [
                   {

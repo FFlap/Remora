@@ -408,6 +408,7 @@ export function DeckEditorWorkspace({
                 <QuickEditor
                   key={editorKey}
                   side={sideHistory.present}
+                  sideKey={String(activeSide?._id ?? "none")}
                   previewSides={quickPreviewSides}
                   activeSidePosition={activeSidePosition}
                   onSelectSide={onSelectSide}

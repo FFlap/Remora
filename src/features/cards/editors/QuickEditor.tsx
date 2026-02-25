@@ -93,14 +93,80 @@ type QuickPreviewSide = {
   model: SideModel;
 };
 
+const quickEditedRichTextKeys = new Set<string>();
+
+function quickEditedKey(sideKey: string, richTextId: string) {
+  return `${sideKey}::${richTextId}`;
+}
+
+function normalizeQuickEditorDefaultLeftLexical(lexical: unknown) {
+  if (!lexical || typeof lexical !== "object") return null;
+  try {
+    const clone = JSON.parse(JSON.stringify(lexical)) as {
+      root?: {
+        children?: Array<{
+          type?: string;
+          format?: unknown;
+          children?: Array<{
+            type?: string;
+            format?: unknown;
+            children?: unknown[];
+          }>;
+        }>;
+      };
+    };
+
+    let changed = false;
+    const visit = (
+      nodes:
+        | Array<{
+            type?: string;
+            format?: unknown;
+            children?: Array<{
+              type?: string;
+              format?: unknown;
+              children?: unknown[];
+            }>;
+          }>
+        | undefined,
+    ) => {
+      if (!Array.isArray(nodes)) return;
+      for (const node of nodes) {
+        if (!node) continue;
+        if (
+          (node.type === "paragraph" ||
+            node.type === "heading" ||
+            node.type === "quote") &&
+          node.format === "center"
+        ) {
+          node.format = "";
+          changed = true;
+        }
+        visit(node.children);
+      }
+    };
+
+    visit(clone.root?.children);
+    if (!changed) {
+      return null;
+    }
+
+    return clone;
+  } catch {
+    return null;
+  }
+}
+
 export function QuickEditor({
   side,
+  sideKey,
   previewSides,
   activeSidePosition,
   onSelectSide,
   onApply,
 }: {
   side: SideModel;
+  sideKey: string;
   previewSides: QuickPreviewSide[];
   activeSidePosition: number;
   onSelectSide: (index: number) => void | Promise<void>;
@@ -126,6 +192,16 @@ export function QuickEditor({
   const richText = useMemo(
     () => richTextBlocks.find((block) => block.id === activeRichTextId) ?? richTextBlocks[0],
     [richTextBlocks, activeRichTextId],
+  );
+  const editorLexicalValue = useMemo(
+    () => {
+      if (!richText) return richText;
+      if (quickEditedRichTextKeys.has(quickEditedKey(sideKey, richText.id))) {
+        return richText.lexical;
+      }
+      return normalizeQuickEditorDefaultLeftLexical(richText.lexical) ?? richText.lexical;
+    },
+    [sideKey, richText?.id, richText?.lexical],
   );
 
   const mediaElements = useMemo(
@@ -193,6 +269,7 @@ export function QuickEditor({
       previewSides={previewSides}
       activeSidePosition={activeSidePosition}
       richText={richText}
+      editorLexicalValue={editorLexicalValue}
       richTextBlocks={richTextBlocks}
       mediaElements={mediaElements}
       cardBackground={cardBackground}
@@ -212,6 +289,9 @@ export function QuickEditor({
         });
       }}
       onBackgroundChange={handleBackgroundChange}
+      onQuickEdit={(id) => {
+        quickEditedRichTextKeys.add(quickEditedKey(sideKey, id));
+      }}
       onApply={onApply}
     />
   );
