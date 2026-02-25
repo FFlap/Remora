@@ -87,11 +87,23 @@ function newEmbedElement(index: number, url: string): SideElement {
   };
 }
 
+type QuickPreviewSide = {
+  sideId: string;
+  index: number;
+  model: SideModel;
+};
+
 export function QuickEditor({
   side,
+  previewSides,
+  activeSidePosition,
+  onSelectSide,
   onApply,
 }: {
   side: SideModel;
+  previewSides: QuickPreviewSide[];
+  activeSidePosition: number;
+  onSelectSide: (index: number) => void | Promise<void>;
   onApply: (
     operations: SideOperation[],
     meta?: {
@@ -178,11 +190,14 @@ export function QuickEditor({
   return (
     <QuickEditorContent
       side={side}
+      previewSides={previewSides}
+      activeSidePosition={activeSidePosition}
       richText={richText}
       richTextBlocks={richTextBlocks}
       mediaElements={mediaElements}
       cardBackground={cardBackground}
       setActiveRichTextId={setActiveRichTextId}
+      onSelectSide={onSelectSide}
       onInsertImage={handleInsertImage}
       onInsertYouTube={() => {
         const raw = window.prompt("YouTube URL");

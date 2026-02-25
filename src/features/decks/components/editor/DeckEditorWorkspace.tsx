@@ -95,6 +95,15 @@ export function DeckEditorWorkspace({
   onReorderSides,
 }: DeckEditorWorkspaceProps) {
   const activeSide = sortedSides.find((side) => side.index === activeSideIndex) ?? sortedSides[0];
+  const activeSidePosition = Math.max(
+    0,
+    sortedSides.findIndex((side) => side.index === activeSideIndex),
+  );
+  const quickPreviewSides = sortedSides.map((side, position) => ({
+    sideId: String(side._id),
+    index: side.index,
+    model: position === activeSidePosition ? sideHistory.present : asSideModel(side.sideModel),
+  }));
   const editorKey = `${selectedCard?._id ?? "none"}:${activeSide?._id ?? "none"}:${editorMode}`;
   const sideTrayScrollRef = useRef<HTMLDivElement | null>(null);
   const sideTrayStripRef = useRef<HTMLDivElement | null>(null);
@@ -396,7 +405,14 @@ export function DeckEditorWorkspace({
               }
             >
               {editorMode === "quick" ? (
-                <QuickEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
+                <QuickEditor
+                  key={editorKey}
+                  side={sideHistory.present}
+                  previewSides={quickPreviewSides}
+                  activeSidePosition={activeSidePosition}
+                  onSelectSide={onSelectSide}
+                  onApply={applyArray}
+                />
               ) : (
                 <CreativeEditor key={editorKey} side={sideHistory.present} onApply={applyArray} />
               )}

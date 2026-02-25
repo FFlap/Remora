@@ -9,15 +9,19 @@ import type {
   SideElement,
   SideModel,
 } from "@/features/cards/side-model/types";
+import { cn } from "@/lib/utils";
 import { LexicalRichTextEditor } from "../LexicalRichTextEditor";
 
 type QuickEditorContentProps = {
   side: SideModel;
+  previewSides: Array<{ sideId: string; index: number; model: SideModel }>;
+  activeSidePosition: number;
   richText: RichTextBlock;
   richTextBlocks: RichTextBlock[];
   mediaElements: Array<ImageBlock | EmbedBlock>;
   cardBackground: string;
   setActiveRichTextId: (id: string) => void;
+  onSelectSide: (index: number) => void | Promise<void>;
   onInsertImage: () => void;
   onInsertYouTube: () => void;
   onBackgroundChange: (background: string) => void;
@@ -165,11 +169,14 @@ function getNextLayoutMode({
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Quick panel composes text controls, palette, media fields, and live preview in one surface.
 export function QuickEditorContent({
   side,
+  previewSides,
+  activeSidePosition,
   richText,
   richTextBlocks,
   mediaElements,
   cardBackground,
   setActiveRichTextId,
+  onSelectSide,
   onInsertImage,
   onInsertYouTube,
   onBackgroundChange,
@@ -350,11 +357,33 @@ export function QuickEditorContent({
             Live Preview
           </p>
           <div ref={previewStageRef} className="quick-editor-preview-stage flex min-h-0 flex-1">
-            <SideCardPreview
-              side={side}
-              dataTestId="quick-live-preview-card"
-              className="h-auto w-full min-w-0 shadow-[0_10px_20px_rgba(15,23,42,0.10)]"
-            />
+            <div className="flex w-full min-w-0 flex-col items-center gap-3">
+              <SideCardPreview
+                side={side}
+                dataTestId="quick-live-preview-card"
+                className="h-auto w-full min-w-0 shadow-[0_10px_20px_rgba(15,23,42,0.10)]"
+              />
+              {previewSides.length > 0 ? (
+                <div className="deck-viewer-side-dots" data-testid="quick-live-preview-side-nav">
+                  {previewSides.map((previewSide, position) => (
+                    <button
+                      key={previewSide.sideId}
+                      type="button"
+                      data-testid={`quick-live-preview-side-dot-${position}`}
+                      className={cn(
+                        "deck-viewer-side-dot",
+                        position === activeSidePosition ? "is-active" : "is-inactive",
+                      )}
+                      onClick={() => {
+                        void onSelectSide(previewSide.index);
+                      }}
+                      aria-label={`Go to side ${position + 1}`}
+                      aria-pressed={position === activeSidePosition}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
