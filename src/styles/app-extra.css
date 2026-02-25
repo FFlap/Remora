@@ -1,0 +1,134 @@
+.deck-viewer-side-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.deck-viewer-side-dot {
+  height: 0.54rem;
+  width: 0.54rem;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.deck-viewer-side-dot.is-active {
+  background: color-mix(in oklab, var(--foreground) 85%, black);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.deck-viewer-side-dot.is-inactive {
+  background: color-mix(in oklab, var(--foreground) 32%, var(--muted));
+  opacity: 0.75;
+}
+
+.deck-viewer-side-dot:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--foreground) 70%, white);
+  outline-offset: 2px;
+}
+
+.landing-root {
+  font-family: "Inter", var(--font-sans);
+}
+
+.landing-soft-shadow {
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.04),
+    0 5px 15px rgba(0, 0, 0, 0.02);
+}
+
+.landing-floating-element {
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.landing-dotted-pattern {
+  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.deck-viewer-flip-shell {
+  position: relative;
+  width: 100%;
+  max-width: 980px;
+  max-height: calc(100dvh - var(--viewer-main-chrome-reserve));
+  perspective: 1600px;
+}
+
+.deck-viewer-flip-inner {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.deck-viewer-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.deck-viewer-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.deck-viewer-flip-face-back {
+  transform: rotateY(180deg);
+}
+
+@media (max-width: 1380px) {
+  .deck-viewer-shell {
+    grid-template-columns: clamp(194px, 22vw, 256px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .deck-viewer-shell {
+    grid-template-columns: clamp(176px, 24vw, 232px) minmax(0, 1fr);
+  }
+}
+
+@media (max-height: 820px) {
+  .deck-viewer-main {
+    --viewer-main-chrome-reserve: clamp(190px, 30vh, 250px);
+  }
+
+  .deck-viewer-stage {
+    gap: 0.65rem;
+  }
+
+  .deck-viewer-nav-row {
+    gap: clamp(0.5rem, 0.9vw, 1rem);
+  }
+
+  .deck-viewer-nav-button {
+    height: 2.6rem;
+    width: 2.6rem;
+  }
+
+  .deck-viewer-side-dots {
+    padding-bottom: 0.3rem;
+  }
+
+  .deck-viewer-main-card-button,
+  .deck-viewer-flip-shell {
+    max-height: calc(100dvh - min(var(--viewer-main-chrome-reserve), 230px));
+  }
+}
+
+@media (max-width: 900px) {
+  .deck-viewer-shell {
+    grid-template-columns: clamp(176px, 24vw, 232px) minmax(0, 1fr);
+  }
+
+  .deck-viewer-main-scroll {
+    padding: clamp(0.65rem, 1.6vw, 0.95rem);
+  }
+}

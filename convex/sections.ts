@@ -1,10 +1,19 @@
 import { v } from "convex/values";
+import { MAX_SECTION_TITLE_LENGTH } from "../shared/contracts/deckConstants";
 import { internal } from "./_generated/api";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { sectionDocValidator } from "./lib/constants";
 
 const SECTION_SIDE_CLEANUP_BATCH_SIZE = 50;
+
+function parseSectionTitle(title: string): string {
+  const trimmed = title.trim();
+  if (trimmed.length > MAX_SECTION_TITLE_LENGTH) {
+    throw new Error(`Section title must be ${MAX_SECTION_TITLE_LENGTH} characters or fewer`);
+  }
+  return trimmed || "New section";
+}
 
 export const listByDeck = query({
   args: { deckId: v.id("decks") },
@@ -35,7 +44,7 @@ export const create = mutation({
 
     const sectionId = await ctx.db.insert("sections", {
       deckId: args.deckId,
-      title: args.title.trim() || "New section",
+      title: parseSectionTitle(args.title),
       order: last ? last.order + 1 : 0,
     });
 
@@ -55,7 +64,7 @@ export const rename = mutation({
       throw new Error("Section not found");
     }
     await assertCanEditDeck(ctx, section.deckId);
-    await ctx.db.patch(args.sectionId, { title: args.title.trim() || "Untitled" });
+    await ctx.db.patch(args.sectionId, { title: parseSectionTitle(args.title) });
     return null;
   },
 });

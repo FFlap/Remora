@@ -7,9 +7,33 @@ import { assetDocValidator, assetWithResolvedUrlValidator } from "./lib/constant
 const UPLOAD_SESSION_TTL_MS = 1000 * 60 * 30;
 
 function createUploadToken() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random()
-    .toString(36)
-    .slice(2, 12)}`;
+  return crypto.randomUUID();
+}
+
+function resolveImageMime(
+  storageMime: string | null,
+  requestedMime: string | undefined,
+): string {
+  if (!storageMime || !storageMime.startsWith("image/")) {
+    throw new Error("Only image uploads are allowed");
+  }
+  if (requestedMime && !requestedMime.startsWith("image/")) {
+    throw new Error("Invalid image MIME type");
+  }
+  if (requestedMime && requestedMime !== storageMime) {
+    throw new Error("Image MIME type does not match uploaded file");
+  }
+  return storageMime;
+}
+
+function assertValidImageDimensions(width: number | undefined, height: number | undefined) {
+  if (width !== undefined && (!Number.isFinite(width) || width <= 0)) {
+    throw new Error("Invalid image width");
+  }
+
+  if (height !== undefined && (!Number.isFinite(height) || height <= 0)) {
+    throw new Error("Invalid image height");
+  }
 }
 
 export const generateUploadUrl = mutation({
@@ -55,6 +79,14 @@ export const saveUploadedImage = mutation({
     const user = await ensureCurrentUser(ctx);
     const normalizedMime = args.mime?.trim().toLowerCase();
     const now = Date.now();
+    const storageMetadata = await ctx.storage.getMetadata(args.storageId);
+    if (!storageMetadata) {
+      throw new Error("Uploaded file not found");
+    }
+    const storageMime = resolveImageMime(
+      storageMetadata.contentType?.trim().toLowerCase() ?? null,
+      normalizedMime,
+    );
 
     const uploadSession = await ctx.db
       .query("assetUploadSessions")
@@ -74,17 +106,7 @@ export const saveUploadedImage = mutation({
       throw new Error("Upload session expired");
     }
 
-    if (normalizedMime && !normalizedMime.startsWith("image/")) {
-      throw new Error("Only image uploads are allowed");
-    }
-
-    if (args.width !== undefined && (!Number.isFinite(args.width) || args.width <= 0)) {
-      throw new Error("Invalid image width");
-    }
-
-    if (args.height !== undefined && (!Number.isFinite(args.height) || args.height <= 0)) {
-      throw new Error("Invalid image height");
-    }
+    assertValidImageDimensions(args.width, args.height);
 
     if (args.deckId) {
       await assertCanEditDeck(ctx, args.deckId);
@@ -111,7 +133,7 @@ export const saveUploadedImage = mutation({
       storageId: args.storageId,
       url: url ?? undefined,
       metadata: {
-        mime: normalizedMime,
+        mime: storageMime,
         width: args.width,
         height: args.height,
       },

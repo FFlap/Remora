@@ -1,5 +1,14 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: Pending staged extraction of Fabric event/hydration systems into dedicated hooks.
-import { ActiveSelection, Canvas, FabricImage, Path, PencilBrush, Rect, Textbox } from "fabric";
+import {
+  ActiveSelection,
+  Canvas,
+  FabricImage,
+  Path,
+  PencilBrush,
+  Rect,
+  Textbox,
+  type FabricObject,
+} from "fabric";
 import {
   Eraser,
   ImagePlus,
@@ -76,6 +85,12 @@ import type {
 } from "./creative/types";
 import { LexicalRichTextEditor, type LexicalRichTextEditorApi } from "./LexicalRichTextEditor";
 import { AlignmentDropdown } from "./lexical/alignment-controls";
+
+declare global {
+  interface Window {
+    __remoraCreativeCanvas?: Canvas;
+  }
+}
 
 function normalizeCreativeInlineDefaultAlignment(lexical: unknown) {
   if (!lexical || typeof lexical !== "object") {
@@ -220,6 +235,32 @@ function serializeLexicalValue(value: unknown) {
   } catch {
     return "";
   }
+}
+
+type CanvasMouseEvent = {
+  e: MouseEvent | PointerEvent | TouchEvent;
+  target?: FabricObject;
+  selected?: FabricObject[];
+  transform?: { action?: string } | null;
+};
+
+type CanvasObjectEvent = {
+  target?: FabricObject;
+  transform?: { action?: string } | null;
+};
+
+type CanvasPathCreatedEvent = {
+  path?: FabricObject;
+};
+
+type CanvasSelectionEvent = {
+  e?: Event;
+  target?: FabricObject;
+  selected?: FabricObject[];
+};
+
+function asCanvasObject(value: FabricObject | null | undefined): CanvasObject | null {
+  return value ? (value as CanvasObject) : null;
 }
 
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: Component currently centralizes Fabric canvas state, tooling, and synchronized SideModel updates.
@@ -388,15 +429,15 @@ export function CreativeEditor({
 
     canvasRef.current = canvas;
     if (typeof window !== "undefined" && import.meta.env.DEV) {
-      (window as CanvasObject).__remoraCreativeCanvas = canvas;
+      window.__remoraCreativeCanvas = canvas;
     }
     return () => {
       if (
         typeof window !== "undefined" &&
         import.meta.env.DEV &&
-        (window as CanvasObject).__remoraCreativeCanvas === canvas
+        window.__remoraCreativeCanvas === canvas
       ) {
-        delete (window as CanvasObject).__remoraCreativeCanvas;
+        delete window.__remoraCreativeCanvas;
       }
       canvas.dispose();
       canvasRef.current = null;
@@ -760,8 +801,8 @@ export function CreativeEditor({
     );
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Hit testing supports both direct path target and tolerant bounds matching.
-    const findStrokeTarget = (event: unknown) => {
-      const direct = canvas.findTarget(event.e) as CanvasObject | null;
+    const findStrokeTarget = (event: CanvasMouseEvent) => {
+      const direct = asCanvasObject(canvas.findTarget(event.e).target);
       if (direct?.data?.kind === "stroke") {
         return direct;
       }
@@ -777,7 +818,7 @@ export function CreativeEditor({
         }
 
         const bounds =
-          typeof object.getBoundingRect === "function" ? object.getBoundingRect(true, true) : null;
+          typeof object.getBoundingRect === "function" ? object.getBoundingRect() : null;
         if (!bounds) continue;
 
         const strokeTolerance = Math.max(
@@ -807,16 +848,19 @@ export function CreativeEditor({
       canvas.renderAll();
     };
 
-    const onPathCreated = (event: unknown) => {
-      if (!event.path) return;
+    const onPathCreated = (event: CanvasPathCreatedEvent) => {
+      if (!(event.path instanceof Path)) return;
       const path = event.path;
       const elementId = `stroke-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-      (path as CanvasObject).data = {
+      const pathObject = path as CanvasObject;
+      pathObject.data = {
         kind: "stroke",
         elementId,
       };
 
       const normalizedStroke = strokeFromFabricPath(path);
+      const pathStrokeColor = typeof path.stroke === "string" ? path.stroke : strokeColor;
+      const pathStrokeWidth = typeof path.strokeWidth === "number" ? path.strokeWidth : strokeWidth;
       // Keep the just-drawn Fabric path in-place and avoid immediate full canvas re-hydration jump.
       skipNextCanvasHydrationRef.current = true;
       onApply(
@@ -831,8 +875,8 @@ export function CreativeEditor({
               baseWidth: normalizedStroke.baseWidth,
               baseHeight: normalizedStroke.baseHeight,
               style: {
-                color: path.stroke ?? strokeColor,
-                width: path.strokeWidth ?? strokeWidth,
+                color: pathStrokeColor,
+                width: pathStrokeWidth,
               },
               quick: { order: side.elements.length },
               creative: normalizedStroke.creative,
@@ -899,8 +943,8 @@ export function CreativeEditor({
     };
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles constrained transforms for single objects and active selections.
-    const onObjectModified = (event: unknown) => {
-      const target = event?.target;
+    const onObjectModified = (event: CanvasObjectEvent) => {
+      const target = asCanvasObject(event.target);
       if (!target) return;
 
       if (isActiveSelectionTarget(target)) {
@@ -1004,8 +1048,8 @@ export function CreativeEditor({
     };
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Keeps live rich-text overlay transforms synchronized while dragging/scaling.
-    const onObjectTransforming = (event: unknown) => {
-      const target = event?.target;
+    const onObjectTransforming = (event: CanvasObjectEvent) => {
+      const target = asCanvasObject(event.target);
       if (!target) return;
 
       if (isActiveSelectionTarget(target)) {
@@ -1084,7 +1128,7 @@ export function CreativeEditor({
       }
     };
 
-    const onMouseMove = (event: unknown) => {
+    const onMouseMove = (event: CanvasMouseEvent) => {
       if (tool !== "erase") return;
       const target = findStrokeTarget(event);
       const metadata = target?.data;
@@ -1110,11 +1154,14 @@ export function CreativeEditor({
     };
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handles right-click menu, select behavior, and erase interactions.
-    const onMouseDown = (event: unknown) => {
-      if (event?.e?.button === 2) {
-        event.e.preventDefault?.();
-        event.e.stopPropagation?.();
-        const target = event?.target ?? null;
+    const onMouseDown = (event: CanvasMouseEvent) => {
+      const nativeEvent = event.e;
+      const isMouseLike =
+        nativeEvent instanceof MouseEvent || nativeEvent instanceof PointerEvent;
+      if (isMouseLike && nativeEvent.button === 2) {
+        nativeEvent.preventDefault?.();
+        nativeEvent.stopPropagation?.();
+        const target = asCanvasObject(event.target);
         const selectedId = target?.data?.elementId;
         const selectedKind = target?.data?.kind;
         if (typeof selectedId === "string") {
@@ -1124,11 +1171,13 @@ export function CreativeEditor({
           }
           if (tool === "select") {
             applyInsightSelectionStyle(target);
-            canvas.setActiveObject(target);
+            if (target) {
+              canvas.setActiveObject(target);
+            }
           }
           setContextMenu({
-            x: event.e.clientX,
-            y: event.e.clientY,
+            x: nativeEvent.clientX,
+            y: nativeEvent.clientY,
             elementId: selectedId,
             kind: typeof selectedKind === "string" ? selectedKind : undefined,
           });
@@ -1150,7 +1199,7 @@ export function CreativeEditor({
           );
           return;
         }
-        const target = event?.target ?? null;
+        const target = asCanvasObject(event.target);
         if (!target) {
           suppressSelectionClearedUntilRef.current = 0;
         }
@@ -1178,12 +1227,14 @@ export function CreativeEditor({
       const target = findStrokeTarget(event);
       const metadata = target?.data;
       if (!target || metadata?.kind !== "stroke") return;
+      const strokeElementId = typeof metadata.elementId === "string" ? metadata.elementId : null;
+      if (!strokeElementId) return;
 
       canvas.remove(target as CanvasObject);
       clearHover();
-      onApply([{ kind: "removeElement", elementId: metadata.elementId }], {
+      onApply([{ kind: "removeElement", elementId: strokeElementId }], {
         source: "creative",
-        batchKey: `erase-${metadata.elementId}`,
+        batchKey: `erase-${strokeElementId}`,
       });
     };
 
@@ -1254,7 +1305,7 @@ export function CreativeEditor({
     };
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Preserves selection continuity across Fabric transient selection events.
-    const onSelectionChanged = (event: unknown) => {
+    const onSelectionChanged = (event: CanvasSelectionEvent) => {
       if (isHydratingCanvasRef.current) return;
       const nativeTarget = event?.e?.target;
       const isCanvasPointerEvent =
@@ -1265,19 +1316,23 @@ export function CreativeEditor({
       if (editingRichTextId && event?.e && !isCanvasPointerEvent) {
         return;
       }
-      if (isActiveSelectionTarget(event?.target)) {
-        const snapshot = buildActiveSelectionSnapshot(event.target, side.elements);
+      const eventTarget = event.target ?? null;
+      if (isActiveSelectionTarget(eventTarget)) {
+        const snapshot = buildActiveSelectionSnapshot(eventTarget, side.elements);
         if (snapshot) {
           activeSelectionSnapshotRef.current = snapshot;
         }
       }
 
-      let selectedTarget = event?.selected?.[0] ?? event?.target ?? null;
+      let selectedTarget = asCanvasObject(event?.selected?.[0]);
+      if (!selectedTarget && eventTarget && !isActiveSelectionTarget(eventTarget)) {
+        selectedTarget = asCanvasObject(eventTarget);
+      }
       if (
         (!selectedTarget?.data?.elementId || !selectedTarget?.data?.kind) &&
-        isActiveSelectionTarget(event?.target)
+        isActiveSelectionTarget(eventTarget)
       ) {
-        const objects = (event.target.getObjects?.() ?? []) as CanvasObject[];
+        const objects = (eventTarget.getObjects?.() ?? []) as CanvasObject[];
         const firstObjectWithData = objects.find((object) => object?.data?.elementId);
         if (firstObjectWithData) {
           selectedTarget = firstObjectWithData;
@@ -1310,7 +1365,7 @@ export function CreativeEditor({
     };
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Reconciles transient clear events with pending selection/editing state.
-    const onSelectionCleared = (event: unknown) => {
+    const onSelectionCleared = (event: CanvasSelectionEvent) => {
       if (isHydratingCanvasRef.current) {
         return;
       }
@@ -1433,9 +1488,9 @@ export function CreativeEditor({
       setEditingRichTextId(null);
     };
 
-    const onDoubleClick = (event: unknown) => {
+    const onDoubleClick = (event: CanvasMouseEvent) => {
       if (tool !== "select") return;
-      const selectedTarget = event?.target ?? null;
+      const selectedTarget = asCanvasObject(event.target);
       const selectedId = selectedTarget?.data?.elementId;
       if (selectedTarget?.data?.kind !== "richText" || typeof selectedId !== "string") return;
       suppressNextSelectionClearedRef.current = true;
@@ -1570,7 +1625,8 @@ export function CreativeEditor({
     : false;
   const selectedAlignment = selectedRichText ? getBlockAlignment(selectedRichText.lexical) : "left";
   const selectedLinkUrl = selectedRichText ? getFirstLinkUrl(selectedRichText.lexical) : null;
-  const canApplyTextStyle = Boolean(selectedRichText) && editingRichTextId === selectedRichText.id;
+  const selectedRichTextId = selectedRichText?.id ?? null;
+  const canApplyTextStyle = selectedRichTextId !== null && editingRichTextId === selectedRichTextId;
   const strokeElements = useMemo(
     () => side.elements.filter((element): element is StrokePath => element.type === "stroke"),
     [side.elements],
@@ -1662,7 +1718,7 @@ export function CreativeEditor({
       editingRichText
         ? normalizeCreativeInlineDefaultAlignment(editingRichText.lexical)
         : editingRichText,
-    [editingRichText?.id, editingRichText?.lexical],
+    [editingRichText],
   );
   const showContextMenu = contextMenu !== null && contextMenuElement !== null;
 

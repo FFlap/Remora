@@ -109,6 +109,7 @@ export const deckDocValidator = v.object({
   whitelistEmails: v.array(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
+  deletedAt: v.optional(v.number()),
 });
 
 export const sectionDocValidator = v.object({
@@ -133,6 +134,7 @@ export const cardDocValidator = v.object({
 export const cardSideDocValidator = v.object({
   _id: v.id("cardSides"),
   _creationTime: v.number(),
+  deckId: v.optional(v.id("decks")),
   cardId: v.id("cards"),
   index: v.number(),
   sideModel: sideModelValidator,

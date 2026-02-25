@@ -398,7 +398,7 @@ function renderNode(
   }
 }
 
-export function lexicalHasRenderableText(lexical: unknown) {
+function lexicalHasRenderableText(lexical: unknown) {
   const root = (lexical as LexicalRoot | undefined)?.root;
   if (!root || !Array.isArray(root.children)) return false;
 

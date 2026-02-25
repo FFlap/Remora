@@ -16,6 +16,54 @@ import { createDefaultSideModel } from "./lib/sideModel";
 const DECK_CLEANUP_BATCH_SIZE = 20;
 const ASSET_RETRY_BASE_DELAY_MS = 30_000;
 const ASSET_RETRY_MAX_ATTEMPTS = 8;
+const MAX_CARDS_PER_DECK = 500;
+const MAX_SIDES_PER_CARD = 50;
+
+async function loadSidesByCardId(
+  ctx: QueryCtx,
+  deckId: Id<"decks">,
+  cards: Doc<"cards">[],
+) {
+  const sidesByCardId = new Map<Id<"cards">, Doc<"cardSides">[]>();
+  const cardIdSet = new Set(cards.map((card) => String(card._id)));
+  const maxSides = MAX_CARDS_PER_DECK * MAX_SIDES_PER_CARD;
+
+  const deckSides = await ctx.db
+    .query("cardSides")
+    .withIndex("by_deck_card_index", (q) => q.eq("deckId", deckId))
+    .take(maxSides);
+
+  for (const side of deckSides) {
+    if (!cardIdSet.has(String(side.cardId))) continue;
+    const sides = sidesByCardId.get(side.cardId) ?? [];
+    sides.push(side);
+    sidesByCardId.set(side.cardId, sides);
+  }
+
+  for (const sides of sidesByCardId.values()) {
+    sides.sort((a, b) => a.index - b.index);
+  }
+
+  const missingCardIds = cards
+    .filter((card) => !sidesByCardId.has(card._id))
+    .map((card) => card._id);
+  if (missingCardIds.length > 0) {
+    const missingSides = await Promise.all(
+      missingCardIds.map((cardId) =>
+        ctx.db
+          .query("cardSides")
+          .withIndex("by_card_index", (q) => q.eq("cardId", cardId))
+          .take(MAX_SIDES_PER_CARD),
+      ),
+    );
+
+    missingCardIds.forEach((cardId, index) => {
+      sidesByCardId.set(cardId, missingSides[index]);
+    });
+  }
+
+  return sidesByCardId;
+}
 
 async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
   const [sections, cards] = await Promise.all([
@@ -26,21 +74,10 @@ async function loadDeckTree(ctx: QueryCtx, deckId: Id<"decks">) {
     ctx.db
       .query("cards")
       .withIndex("by_deck", (q) => q.eq("deckId", deckId))
-      .collect(),
+      .take(MAX_CARDS_PER_DECK),
   ]);
 
-  const sidesByCardId = new Map<Id<"cards">, Doc<"cardSides">[]>();
-  const cardSides = await Promise.all(
-    cards.map((card) =>
-      ctx.db
-        .query("cardSides")
-        .withIndex("by_card_index", (q) => q.eq("cardId", card._id))
-        .collect(),
-    ),
-  );
-  cards.forEach((card, index) => {
-    sidesByCardId.set(card._id, cardSides[index]);
-  });
+  const sidesByCardId = await loadSidesByCardId(ctx, deckId, cards);
 
   const cardsBySection = new Map<
     Id<"sections">,
@@ -77,17 +114,14 @@ async function loadDeckEditShell(ctx: QueryCtx, deckId: Id<"decks">) {
     ctx.db
       .query("cards")
       .withIndex("by_deck", (q) => q.eq("deckId", deckId))
-      .collect(),
+      .take(MAX_CARDS_PER_DECK),
   ]);
 
-  const frontSides = await Promise.all(
-    cards.map((card) =>
-      ctx.db
-        .query("cardSides")
-        .withIndex("by_card_index", (q) => q.eq("cardId", card._id).eq("index", 0))
-        .first(),
-    ),
-  );
+  const sidesByCardId = await loadSidesByCardId(ctx, deckId, cards);
+  const frontSides = cards.map((card) => {
+    const cardSides = sidesByCardId.get(card._id) ?? [];
+    return cardSides.find((side) => side.index === 0) ?? cardSides[0] ?? null;
+  });
 
   const cardsBySection = new Map<Id<"sections">, EditShellCard[]>();
   cards.forEach((card, index) => {
@@ -118,11 +152,12 @@ export const listMine = query({
       return [];
     }
 
-    return await ctx.db
+    const decks = await ctx.db
       .query("decks")
       .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
       .order("desc")
       .collect();
+    return decks.filter((deck) => !deck.deletedAt);
   },
 });
 
@@ -135,10 +170,12 @@ export const listPublic = query({
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .order("desc")
       .take(20);
-    return decks.map((deck) => ({
-      ...deck,
-      whitelistEmails: [],
-    }));
+    return decks
+      .filter((deck) => !deck.deletedAt)
+      .map((deck) => ({
+        ...deck,
+        whitelistEmails: [],
+      }));
   },
 });
 
@@ -186,6 +223,7 @@ export const create = mutation({
     });
 
     await ctx.db.insert("cardSides", {
+      deckId,
       cardId,
       index: 0,
       sideModel: createDefaultSideModel("1"),
@@ -194,6 +232,7 @@ export const create = mutation({
     });
 
     await ctx.db.insert("cardSides", {
+      deckId,
       cardId,
       index: 1,
       sideModel: createDefaultSideModel("2"),
@@ -318,11 +357,13 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
+    // Soft-delete the deck first so it's hidden from queries,
+    // then cascade-delete children before hard-deleting the deck.
+    await ctx.db.patch(args.deckId, { deletedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.decks.removeCascadeStep, {
       deckId: args.deckId,
       stage: "cards",
     });
-    await ctx.db.delete(args.deckId);
     return null;
   },
 });
@@ -335,6 +376,7 @@ export const removeCascadeStep = internalMutation({
       v.literal("sections"),
       v.literal("accessRequests"),
       v.literal("assets"),
+      v.literal("done"),
     ),
   },
   returns: v.null(),
@@ -422,12 +464,24 @@ export const removeCascadeStep = internalMutation({
       return null;
     }
 
+    if (args.stage === "done") {
+      const deck = await ctx.db.get(args.deckId);
+      if (deck) {
+        await ctx.db.delete(args.deckId);
+      }
+      return null;
+    }
+
     const assets = await ctx.db
       .query("assets")
       .withIndex("by_deck", (q) => q.eq("deckId", args.deckId))
       .take(DECK_CLEANUP_BATCH_SIZE);
 
     if (assets.length === 0) {
+      await ctx.scheduler.runAfter(0, internal.decks.removeCascadeStep, {
+        deckId: args.deckId,
+        stage: "done",
+      });
       return null;
     }
 

@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../shared/sideModelDefaults";
 import type { SideOperation } from "../side-model/ops";
@@ -93,7 +93,17 @@ type QuickPreviewSide = {
   model: SideModel;
 };
 
-const quickEditedRichTextKeys = new Set<string>();
+type QuickLexicalNode = {
+  type?: string;
+  format?: unknown;
+  children?: QuickLexicalNode[];
+};
+
+type QuickLexicalState = {
+  root?: {
+    children?: QuickLexicalNode[];
+  };
+};
 
 function quickEditedKey(sideKey: string, richTextId: string) {
   return `${sideKey}::${richTextId}`;
@@ -102,34 +112,10 @@ function quickEditedKey(sideKey: string, richTextId: string) {
 function normalizeQuickEditorDefaultLeftLexical(lexical: unknown) {
   if (!lexical || typeof lexical !== "object") return null;
   try {
-    const clone = JSON.parse(JSON.stringify(lexical)) as {
-      root?: {
-        children?: Array<{
-          type?: string;
-          format?: unknown;
-          children?: Array<{
-            type?: string;
-            format?: unknown;
-            children?: unknown[];
-          }>;
-        }>;
-      };
-    };
+    const clone = JSON.parse(JSON.stringify(lexical)) as QuickLexicalState;
 
     let changed = false;
-    const visit = (
-      nodes:
-        | Array<{
-            type?: string;
-            format?: unknown;
-            children?: Array<{
-              type?: string;
-              format?: unknown;
-              children?: unknown[];
-            }>;
-          }>
-        | undefined,
-    ) => {
+    const visit = (nodes: QuickLexicalNode[] | undefined) => {
       if (!Array.isArray(nodes)) return;
       for (const node of nodes) {
         if (!node) continue;
@@ -179,6 +165,7 @@ export function QuickEditor({
     },
   ) => void;
 }) {
+  const quickEditedRichTextKeys = useRef(new Set<string>());
   const richTextBlocks = useMemo(
     () =>
       side.elements
@@ -196,12 +183,12 @@ export function QuickEditor({
   const editorLexicalValue = useMemo(
     () => {
       if (!richText) return richText;
-      if (quickEditedRichTextKeys.has(quickEditedKey(sideKey, richText.id))) {
+      if (quickEditedRichTextKeys.current.has(quickEditedKey(sideKey, richText.id))) {
         return richText.lexical;
       }
       return normalizeQuickEditorDefaultLeftLexical(richText.lexical) ?? richText.lexical;
     },
-    [sideKey, richText?.id, richText?.lexical],
+    [sideKey, richText],
   );
 
   const mediaElements = useMemo(
@@ -290,7 +277,7 @@ export function QuickEditor({
       }}
       onBackgroundChange={handleBackgroundChange}
       onQuickEdit={(id) => {
-        quickEditedRichTextKeys.add(quickEditedKey(sideKey, id));
+        quickEditedRichTextKeys.current.add(quickEditedKey(sideKey, id));
       }}
       onApply={onApply}
     />

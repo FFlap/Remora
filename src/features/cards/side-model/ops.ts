@@ -17,19 +17,19 @@ export type SideOperation =
     }
   | { kind: "replaceElement"; elementId: string; element: SideElement };
 
-export type AppliedOperation = {
+type AppliedOperation = {
   next: SideModel;
   inverse: SideOperation[];
 };
 
-export function cloneSideModel(side: SideModel): SideModel {
+function cloneSideModel(side: SideModel): SideModel {
   if (typeof structuredClone === "function") {
     return structuredClone(side);
   }
   return JSON.parse(JSON.stringify(side)) as SideModel;
 }
 
-export function applyOperation(side: SideModel, op: SideOperation): AppliedOperation {
+function applyOperation(side: SideModel, op: SideOperation): AppliedOperation {
   const draft = cloneSideModel(side);
   const idx = "elementId" in op ? draft.elements.findIndex((el) => el.id === op.elementId) : -1;
 

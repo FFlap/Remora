@@ -37,8 +37,7 @@ test.describe("Sidebar context menu", () => {
     await createDeckAndOpenEditor(page);
 
     await page
-      .getByRole("button", { name: /section/i })
-      .first()
+      .getByRole("button", { name: /^Section$/ })
       .click();
     await expect(page.getByText("Section 2").first()).toBeVisible();
 

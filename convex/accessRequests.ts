@@ -5,6 +5,8 @@ import { assertCanEditDeck, getDeckOrThrow } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser, normalizeEmail } from "./lib/auth";
 import { deckAccessRequestDocValidator } from "./lib/constants";
 
+const RE_REQUEST_COOLDOWN_MS = 1000 * 60 * 60 * 24; // 24 hours
+
 export const requestAccess = mutation({
   args: {
     deckId: v.id("decks"),
@@ -44,6 +46,13 @@ export const requestAccess = mutation({
     if (existing) {
       if (existing.status === "pending" || existing.status === "approved") {
         return existing._id;
+      }
+
+      if (
+        existing.status === "rejected" &&
+        now - existing.updatedAt < RE_REQUEST_COOLDOWN_MS
+      ) {
+        throw new Error("Please wait before requesting access again");
       }
 
       await ctx.db.patch(existing._id, {

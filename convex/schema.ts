@@ -25,6 +25,7 @@ export default defineSchema({
     whitelistEmails: v.array(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
   })
     .index("by_owner", ["ownerUserId"])
     .index("by_visibility", ["visibility"]),
@@ -51,6 +52,7 @@ export default defineSchema({
     .index("by_section_order", ["sectionId", "order"]),
 
   cardSides: defineTable({
+    deckId: v.optional(v.id("decks")),
     cardId: v.id("cards"),
     index: v.number(),
     sideModel: sideModelValidator,
@@ -58,7 +60,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_card", ["cardId"])
-    .index("by_card_index", ["cardId", "index"]),
+    .index("by_card_index", ["cardId", "index"])
+    .index("by_deck_card_index", ["deckId", "cardId", "index"]),
 
   deckAccessRequests: defineTable({
     deckId: v.id("decks"),

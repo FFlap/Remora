@@ -17,7 +17,7 @@ export type CanvasObjectMetadata = {
 
 export type CanvasObject = FabricObject & {
   data?: CanvasObjectMetadata;
-  __originalStroke?: string | null;
+  __originalStroke?: FabricObject["stroke"] | null;
 };
 
 export type CreativeTransform = {

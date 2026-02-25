@@ -3,7 +3,7 @@ import { DEFAULT_RICHTEXT_CREATIVE_BOUNDS } from "../../../../../shared/sideMode
 
 type BlockAlignment = "left" | "center" | "right" | "justify";
 
-export type LexicalTextNode = {
+type LexicalTextNode = {
   type?: string;
   text?: string;
   url?: string;
@@ -20,7 +20,7 @@ type LexicalRootState = {
   };
 };
 
-export function createDefaultLexicalState() {
+function createDefaultLexicalState() {
   return {
     root: {
       children: [
@@ -200,101 +200,6 @@ export function getFirstLinkUrl(lexical: unknown) {
   return found;
 }
 
-export function toggleListTypeOnRoot(lexical: unknown, listType: "bullet" | "number") {
-  const clone = cloneLexicalState(lexical);
-  const rootChildren = clone.root?.children;
-  if (!Array.isArray(rootChildren) || rootChildren.length === 0) return clone;
-  const inheritedAlignment = getBlockAlignment(clone);
-
-  if (rootChildren.length === 1 && rootChildren[0]?.type === "list") {
-    const existing = rootChildren[0];
-    if (existing.listType === listType) {
-      const unwrapped = (existing.children ?? [])
-        .map((child) => {
-          if (
-            child?.type === "listitem" &&
-            Array.isArray(child.children) &&
-            child.children.length > 0
-          ) {
-            const firstChild = child.children[0] as LexicalTextNode | undefined;
-            if (!firstChild || typeof firstChild !== "object") return null;
-            if (
-              firstChild.type === "paragraph" ||
-              firstChild.type === "heading" ||
-              firstChild.type === "quote"
-            ) {
-              return {
-                ...firstChild,
-                format: normalizeBlockAlignment(firstChild.format ?? child.format),
-              };
-            }
-            return firstChild;
-          }
-          return null;
-        })
-        .filter((node): node is LexicalTextNode => node !== null);
-      clone.root = {
-        ...clone.root,
-        children: unwrapped.length > 0 ? unwrapped : rootChildren,
-      };
-      return clone;
-    }
-
-    const updatedList: LexicalTextNode = {
-      ...existing,
-      listType,
-      tag: listType === "number" ? "ol" : "ul",
-      format: normalizeBlockAlignment(existing.format),
-      children: (existing.children ?? []).map((child) => {
-        if (!child || child.type !== "listitem") return child;
-        const align = normalizeBlockAlignment(child.format ?? existing.format);
-        return {
-          ...child,
-          format: align,
-          children: (child.children ?? []).map((grandChild) => {
-            if (
-              grandChild?.type === "paragraph" ||
-              grandChild?.type === "heading" ||
-              grandChild?.type === "quote"
-            ) {
-              return { ...grandChild, format: align };
-            }
-            return grandChild;
-          }),
-        };
-      }),
-    };
-    clone.root = {
-      ...clone.root,
-      children: [updatedList],
-    };
-    return clone;
-  }
-
-  const wrappedList: LexicalTextNode = {
-    type: "list",
-    listType,
-    tag: listType === "number" ? "ol" : "ul",
-    format: inheritedAlignment,
-    children: rootChildren.map((node, index) => ({
-      type: "listitem",
-      value: index + 1,
-      format: inheritedAlignment,
-      children: [
-        node?.type === "paragraph" || node?.type === "heading" || node?.type === "quote"
-          ? { ...node, format: inheritedAlignment }
-          : node,
-      ],
-    })),
-  };
-
-  clone.root = {
-    ...clone.root,
-    children: [wrappedList],
-  };
-  return clone;
-}
-
 export function hasRootListType(lexical: unknown, listType: "bullet" | "number") {
   const rootChildren = cloneLexicalState(lexical).root?.children;
   return (
@@ -333,27 +238,6 @@ export function getBlockAlignment(lexical: unknown): BlockAlignment {
   };
   visit(clone.root?.children);
   return detected ?? "left";
-}
-
-export function setBlockAlignmentOnAll(lexical: unknown, align: BlockAlignment) {
-  const clone = cloneLexicalState(lexical);
-  const visit = (nodes: LexicalTextNode[] | undefined) => {
-    if (!Array.isArray(nodes)) return;
-    for (const node of nodes) {
-      if (
-        node?.type === "paragraph" ||
-        node?.type === "heading" ||
-        node?.type === "quote" ||
-        node?.type === "list" ||
-        node?.type === "listitem"
-      ) {
-        node.format = align;
-      }
-      visit(node?.children);
-    }
-  };
-  visit(clone.root?.children);
-  return clone;
 }
 
 export function setLinkOnAllBlocks(lexical: unknown, url: string | null) {

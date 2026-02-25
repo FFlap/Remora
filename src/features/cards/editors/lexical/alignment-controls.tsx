@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { TextAlignment } from "./types";
 
-export type AlignmentOption = TextAlignment;
+type AlignmentOption = TextAlignment;
 
 const ALIGNMENT_OPTIONS: Array<{ label: string; value: AlignmentOption }> = [
   { label: "Left", value: "left" },

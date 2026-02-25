@@ -217,7 +217,7 @@ export function getObjectBounds(object: CanvasObject | ActiveSelection | null) {
   if (!object) return null;
   object.setCoords?.();
   if (typeof object.getBoundingRect !== "function") return null;
-  return object.getBoundingRect(true, true);
+  return object.getBoundingRect();
 }
 
 export function clampCreativeTransform(
@@ -344,7 +344,7 @@ export function constrainObjectToCardBounds(
 
   const readBounds = () => {
     if (typeof object.getBoundingRect !== "function") return null;
-    return object.getBoundingRect(true, true);
+    return object.getBoundingRect();
   };
 
   const applyScaleToFitBounds = (bounds: ReturnType<typeof readBounds>) => {
@@ -414,7 +414,7 @@ export function constrainObjectPositionToCardBounds(
   if (!object) return false;
   object.setCoords?.();
   const bounds =
-    typeof object.getBoundingRect === "function" ? object.getBoundingRect(true, true) : null;
+    typeof object.getBoundingRect === "function" ? object.getBoundingRect() : null;
   if (!bounds) return false;
 
   let deltaX = 0;

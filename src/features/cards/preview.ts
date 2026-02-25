@@ -1,33 +1,5 @@
 import type { RichTextBlock, SideModel } from "./side-model/types";
 
-export function extractFrontPreview(side: SideModel | undefined) {
-  if (!side) {
-    return "Empty side";
-  }
-
-  const textBlock = side.elements.find((el): el is RichTextBlock => el.type === "richText");
-  if (textBlock?.lexical && typeof textBlock.lexical === "object") {
-    const root = (textBlock.lexical as { root?: { children?: unknown[] } }).root;
-    if (Array.isArray(root?.children)) {
-      const text = collectLexicalText(root.children).trim();
-      if (text) {
-        return text.slice(0, 72);
-      }
-    }
-  }
-
-  const image = side.elements.find((el) => el.type === "image");
-  if (image) return "Image";
-
-  const embed = side.elements.find((el) => el.type === "embed");
-  if (embed) return "Video embed";
-
-  const stroke = side.elements.find((el) => el.type === "stroke");
-  if (stroke) return "Drawing";
-
-  return "Empty side";
-}
-
 export function extractFrontSearchText(side: SideModel | undefined) {
   if (!side) {
     return "";

@@ -4,10 +4,8 @@ import {
 } from "../../../../shared/sideModelDefaults";
 import { createDefaultSideModel } from "../../../../shared/sideModelFactory";
 import type {
-  BaseElement,
   CreativeLayout,
   CreativeTransform,
-  ElementKind,
   EmbedBlock,
   ImageBlock,
   QuickLayout,
@@ -18,13 +16,9 @@ import type {
 } from "../../../../shared/sideModelTypes";
 
 export type {
-  BaseElement,
-  CreativeLayout,
   CreativeTransform,
-  ElementKind,
   EmbedBlock,
   ImageBlock,
-  QuickLayout,
   RichTextBlock,
   SideElement,
   SideModel,

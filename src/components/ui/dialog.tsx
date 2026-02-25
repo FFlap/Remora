@@ -15,10 +15,6 @@ function DialogPortal(props: React.ComponentProps<typeof DialogPrimitive.Portal>
   return <DialogPrimitive.Portal {...props} />;
 }
 
-function DialogClose(props: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close {...props} />;
-}
-
 function DialogOverlay({
   className,
   ...props
@@ -82,13 +78,10 @@ function DialogDescription({
 
 export {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogOverlay,
-  DialogPortal,
   DialogTitle,
   DialogTrigger,
 };

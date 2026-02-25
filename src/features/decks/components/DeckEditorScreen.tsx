@@ -21,7 +21,7 @@ import type { DeckEditorCardData, DeckEditShellData } from "@/features/decks/typ
 import { useUpdateSharing } from "@/features/sharing/api/useSharingApi";
 import type { Id } from "@/lib/convexApi";
 
-type EditorCardSide = DeckEditorCardData["sides"][number];
+type EditorCardSide = NonNullable<DeckEditorCardData>["sides"][number];
 
 function resolveSideDeletion({
   sortedSides,

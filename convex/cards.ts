@@ -35,6 +35,7 @@ export const create = mutation({
     });
 
     await ctx.db.insert("cardSides", {
+      deckId: args.deckId,
       cardId,
       index: 0,
       sideModel: createDefaultSideModel("1"),
@@ -42,6 +43,7 @@ export const create = mutation({
       updatedAt: now,
     });
     await ctx.db.insert("cardSides", {
+      deckId: args.deckId,
       cardId,
       index: 1,
       sideModel: createDefaultSideModel("2"),

@@ -9,10 +9,6 @@ export function useMyDecks() {
   return useQuery(api.decks.listMine, {});
 }
 
-export function usePublicDecks() {
-  return useQuery(api.decks.listPublic, {});
-}
-
 export function useDeckEditShell(deckId: string | Id<"decks"> | undefined) {
   const typedDeckId = asDeckId(deckId);
   return useQuery(api.decks.getEditShell, typedDeckId ? { deckId: typedDeckId } : "skip");

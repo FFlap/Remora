@@ -1,27 +1,15 @@
 import { z } from "zod";
 import {
-  ACCESS_REQUEST_STATUS_VALUES,
   DECK_VISIBILITY_VALUES,
-  EDIT_MODE_VALUES,
   MAX_ACCESS_REQUEST_MESSAGE_LENGTH,
   MAX_DECK_DESCRIPTION_LENGTH,
   MAX_DECK_TITLE_LENGTH,
   MAX_WHITELIST_EMAILS,
 } from "./deckConstants";
 
-export {
-  ACCESS_REQUEST_STATUS_VALUES,
-  DECK_VISIBILITY_VALUES,
-  EDIT_MODE_VALUES,
-  MAX_ACCESS_REQUEST_MESSAGE_LENGTH,
-  MAX_DECK_DESCRIPTION_LENGTH,
-  MAX_DECK_TITLE_LENGTH,
-  MAX_WHITELIST_EMAILS,
-};
-
 const normalizedEmailSchema = z.string().trim().toLowerCase().email().max(320);
 
-export const deckMetaInputSchema = z.object({
+const deckMetaInputSchema = z.object({
   title: z
     .string()
     .trim()
@@ -37,7 +25,7 @@ export const deckMetaInputSchema = z.object({
     .default(""),
 });
 
-export const deckSharingInputSchema = z
+const deckSharingInputSchema = z
   .object({
     visibility: z.enum(DECK_VISIBILITY_VALUES),
     whitelistEmails: z
@@ -49,7 +37,7 @@ export const deckSharingInputSchema = z
     whitelistEmails: Array.from(new Set(whitelistEmails)),
   }));
 
-export const accessRequestMessageSchema = z
+const accessRequestMessageSchema = z
   .string()
   .trim()
   .max(
@@ -58,10 +46,6 @@ export const accessRequestMessageSchema = z
   )
   .optional()
   .transform((value) => (value && value.length > 0 ? value : undefined));
-
-export type DeckVisibilityValue = z.infer<typeof deckSharingInputSchema>["visibility"];
-export type EditModeValue = (typeof EDIT_MODE_VALUES)[number];
-export type AccessRequestStatusValue = (typeof ACCESS_REQUEST_STATUS_VALUES)[number];
 
 export function parseDeckMetaInput(value: unknown) {
   return deckMetaInputSchema.parse(value);

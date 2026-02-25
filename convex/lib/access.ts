@@ -17,7 +17,7 @@ export type DeckReadDecision = {
 
 export async function getDeckOrThrow(ctx: AnyCtx, deckId: Id<"decks">) {
   const deck = await ctx.db.get(deckId);
-  if (!deck) {
+  if (!deck || deck.deletedAt) {
     throw new Error("Deck not found");
   }
   return deck;

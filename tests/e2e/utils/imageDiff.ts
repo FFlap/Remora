@@ -1,7 +1,7 @@
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
-export type InkBounds = {
+type InkBounds = {
   minX: number;
   minY: number;
   maxX: number;
@@ -45,7 +45,7 @@ function rgbaToLuma(r: number, g: number, b: number) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-export function extractInkBounds(
+function extractInkBounds(
   image: PNG,
   {
     alphaMin = 10,

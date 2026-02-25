@@ -4,6 +4,8 @@ import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { cardSideDocValidator, editModeValidator, sideModelValidator } from "./lib/constants";
 import { createDefaultSideModel } from "./lib/sideModel";
 
+const MAX_SIDE_MODEL_SIZE_BYTES = 512_000; // 500 KB
+
 export const listByCard = query({
   args: { cardId: v.id("cards") },
   returns: v.array(cardSideDocValidator),
@@ -38,6 +40,10 @@ export const saveSide = mutation({
 
     await assertCanEditDeck(ctx, card.deckId);
 
+    if (JSON.stringify(args.sideModel).length > MAX_SIDE_MODEL_SIZE_BYTES) {
+      throw new Error("Side content is too large");
+    }
+
     let existing = null;
     if (args.sideId) {
       const byId = await ctx.db.get(args.sideId);
@@ -57,6 +63,7 @@ export const saveSide = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
+        ...(existing.deckId !== card.deckId ? { deckId: card.deckId } : {}),
         sideModel: args.sideModel,
         updatedAt: now,
       });
@@ -109,6 +116,7 @@ export const addSide = mutation({
     const now = Date.now();
 
     await ctx.db.insert("cardSides", {
+      deckId: card.deckId,
       cardId: args.cardId,
       index: targetIndex,
       sideModel: createDefaultSideModel(String(targetIndex + 1)),

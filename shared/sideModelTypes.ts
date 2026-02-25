@@ -1,4 +1,4 @@
-export type ElementKind = "richText" | "image" | "embed" | "stroke";
+type ElementKind = "richText" | "image" | "embed" | "stroke";
 
 export type CreativeTransform = {
   x: number;

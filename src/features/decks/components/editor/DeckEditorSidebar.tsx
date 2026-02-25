@@ -38,6 +38,187 @@ type DeckEditorSidebarProps = {
   onResetActiveSideIndex: () => void;
 };
 
+function buildVisibleSections(
+  sections: DeckEditShellData["sections"],
+  normalizedSearchValue: string,
+): DeckSidebarVisibleSection[] {
+  return sections
+    .map((section) => {
+      const sectionMatches =
+        normalizedSearchValue.length > 0 &&
+        section.title.toLowerCase().includes(normalizedSearchValue);
+      const visibleCards = section.cards
+        .map((card, originalIndex) => ({
+          card,
+          originalIndex,
+        }))
+        .filter(({ card }) => {
+          if (normalizedSearchValue.length === 0 || sectionMatches) {
+            return true;
+          }
+
+          const frontText = extractFrontSearchText(asSideModel(card.frontSide?.sideModel));
+          return frontText.toLowerCase().includes(normalizedSearchValue);
+        });
+
+      return {
+        section,
+        visibleCards,
+      };
+    })
+    .filter((section) => normalizedSearchValue.length === 0 || section.visibleCards.length > 0);
+}
+
+function useSidebarVisibility(sections: DeckEditShellData["sections"]) {
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [searchValue, setSearchValue] = useState("");
+  const sectionIds = useMemo(
+    () => sections.map((section) => String(section._id) as Id<"sections">),
+    [sections],
+  );
+  const normalizedSearchValue = searchValue.trim().toLowerCase();
+  const dragEnabled = normalizedSearchValue.length === 0;
+  const visibleSections = useMemo<DeckSidebarVisibleSection[]>(
+    () => buildVisibleSections(sections, normalizedSearchValue),
+    [sections, normalizedSearchValue],
+  );
+  const visibleSectionIds = useMemo(
+    () => visibleSections.map((entry) => String(entry.section._id) as Id<"sections">),
+    [visibleSections],
+  );
+
+  const toggleSectionCollapsed = (sectionId: string) => {
+    setCollapsedSections((current) => ({
+      ...current,
+      [sectionId]: !(current[sectionId] ?? false),
+    }));
+  };
+
+  return {
+    collapsedSections,
+    searchValue,
+    setSearchValue,
+    sectionIds,
+    dragEnabled,
+    visibleSections,
+    visibleSectionIds,
+    toggleSectionCollapsed,
+  };
+}
+
+function DeckEditorSidebarLayout({
+  searchValue,
+  setSearchValue,
+  visibleSections,
+  visibleSectionIds,
+  dragEnabled,
+  selectedCardId,
+  activeSidePreview,
+  activePreviewCardId,
+  collapsedSections,
+  sensors,
+  onSectionDragEnd,
+  onCardDragEnd,
+  onSelectCard,
+  onSectionContextMenu,
+  onCardContextMenu,
+  onToggleCollapsed,
+  onCreateSection,
+  contextMenu,
+  sections,
+  onNewCardInSection,
+  onMoveCardToSection,
+  onDeleteCard,
+  onRenameSection,
+  onDeleteSection,
+}: {
+  searchValue: string;
+  setSearchValue: (value: string) => void;
+  visibleSections: DeckSidebarVisibleSection[];
+  visibleSectionIds: Id<"sections">[];
+  dragEnabled: boolean;
+  selectedCardId?: string;
+  activeSidePreview: SideModel;
+  activePreviewCardId?: string;
+  collapsedSections: Record<string, boolean>;
+  sensors: ReturnType<typeof useSidebarSensors>;
+  onSectionDragEnd: ReturnType<typeof useDeckSidebarReorderActions>["onSectionDragEnd"];
+  onCardDragEnd: ReturnType<typeof useDeckSidebarReorderActions>["onCardDragEnd"];
+  onSelectCard: ReturnType<typeof useDeckSidebarNavigation>["selectCard"];
+  onSectionContextMenu: ReturnType<typeof useSidebarContextMenu>["openSectionContextMenu"];
+  onCardContextMenu: ReturnType<typeof useSidebarContextMenu>["openCardContextMenu"];
+  onToggleCollapsed: (sectionId: string) => void;
+  onCreateSection: () => Promise<void>;
+  contextMenu: ReturnType<typeof useSidebarContextMenu>["contextMenu"];
+  sections: DeckEditShellData["sections"];
+  onNewCardInSection: ReturnType<typeof useDeckSidebarCardActions>["handleNewCardInSection"];
+  onMoveCardToSection: ReturnType<typeof useDeckSidebarCardActions>["handleMoveCardToSection"];
+  onDeleteCard: ReturnType<typeof useDeckSidebarCardActions>["handleDeleteCard"];
+  onRenameSection: ReturnType<typeof useDeckSidebarSectionActions>["handleRenameSection"];
+  onDeleteSection: ReturnType<typeof useDeckSidebarSectionActions>["handleDeleteSection"];
+}) {
+  return (
+    <aside className="deck-editor-sidebar h-full border-r border-border bg-muted/50 flex flex-col flex-shrink-0">
+      <DeckSidebarHeader searchValue={searchValue} onSearchChange={setSearchValue} />
+
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2"
+        data-testid="deck-sidebar-scroll"
+        onWheelCapture={scrollSidebarOnHoverWheel}
+      >
+        {visibleSections.length > 0 ? (
+          <DeckSidebarSections
+            sections={visibleSections}
+            sectionIds={visibleSectionIds}
+            dragEnabled={dragEnabled}
+            selectedCardId={selectedCardId}
+            activeSidePreview={activeSidePreview}
+            activePreviewCardId={activePreviewCardId}
+            collapsedSections={collapsedSections}
+            sensors={sensors}
+            onSectionDragEnd={onSectionDragEnd}
+            onCardDragEnd={onCardDragEnd}
+            onSelectCard={onSelectCard}
+            onSectionContextMenu={onSectionContextMenu}
+            onCardContextMenu={onCardContextMenu}
+            onToggleCollapsed={onToggleCollapsed}
+          />
+        ) : (
+          <p
+            data-testid="deck-sidebar-no-results"
+            className="px-2 py-3 text-xs text-muted-foreground"
+          >
+            No matching cards.
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-border flex-shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 w-full justify-center rounded-none border-x-0 border-b-0"
+          data-testid="deck-sidebar-add-section"
+          onClick={() => void onCreateSection()}
+        >
+          <Plus className="h-4 w-4" /> Section
+        </Button>
+      </div>
+
+      <DeckSidebarContextMenu
+        contextMenu={contextMenu}
+        sections={sections}
+        onNewCardInSection={onNewCardInSection}
+        onMoveCardToSection={onMoveCardToSection}
+        onDeleteCard={onDeleteCard}
+        onRenameSection={onRenameSection}
+        onDeleteSection={onDeleteSection}
+      />
+    </aside>
+  );
+}
+
 function canScrollWithDelta(node: HTMLElement, deltaY: number) {
   const maxScrollTop = node.scrollHeight - node.clientHeight;
   if (maxScrollTop <= 1 || deltaY === 0) return false;
@@ -96,45 +277,16 @@ export function DeckEditorSidebar({
   const removeCard = useRemoveCard();
 
   const sensors = useSidebarSensors();
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
-  const [searchValue, setSearchValue] = useState("");
-  const sectionIds = useMemo(
-    () => data.sections.map((section) => String(section._id) as Id<"sections">),
-    [data.sections],
-  );
-  const normalizedSearchValue = searchValue.trim().toLowerCase();
-  const dragEnabled = normalizedSearchValue.length === 0;
-  const visibleSections = useMemo<DeckSidebarVisibleSection[]>(() => {
-    return data.sections
-      .map((section) => {
-        const sectionMatches =
-          normalizedSearchValue.length > 0 &&
-          section.title.toLowerCase().includes(normalizedSearchValue);
-        const visibleCards = section.cards
-          .map((card, originalIndex) => ({
-            card,
-            originalIndex,
-          }))
-          .filter(({ card }) => {
-            if (normalizedSearchValue.length === 0 || sectionMatches) {
-              return true;
-            }
-
-            const frontText = extractFrontSearchText(asSideModel(card.frontSide?.sideModel));
-            return frontText.toLowerCase().includes(normalizedSearchValue);
-          });
-
-        return {
-          section,
-          visibleCards,
-        };
-      })
-      .filter((section) => normalizedSearchValue.length === 0 || section.visibleCards.length > 0);
-  }, [data.sections, normalizedSearchValue]);
-  const visibleSectionIds = useMemo(
-    () => visibleSections.map((entry) => String(entry.section._id) as Id<"sections">),
-    [visibleSections],
-  );
+  const {
+    collapsedSections,
+    searchValue,
+    setSearchValue,
+    sectionIds,
+    dragEnabled,
+    visibleSections,
+    visibleSectionIds,
+    toggleSectionCollapsed,
+  } = useSidebarVisibility(data.sections);
 
   const { contextMenu, closeContextMenu, openSectionContextMenu, openCardContextMenu } =
     useSidebarContextMenu();
@@ -177,71 +329,32 @@ export function DeckEditorSidebar({
       closeContextMenu,
     });
 
-  const toggleSectionCollapsed = (sectionId: string) => {
-    setCollapsedSections((current) => ({
-      ...current,
-      [sectionId]: !(current[sectionId] ?? false),
-    }));
-  };
-
   return (
-    <aside className="deck-editor-sidebar h-full border-r border-border bg-muted/50 flex flex-col flex-shrink-0">
-      <DeckSidebarHeader searchValue={searchValue} onSearchChange={setSearchValue} />
-
-      <div
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2"
-        data-testid="deck-sidebar-scroll"
-        onWheelCapture={scrollSidebarOnHoverWheel}
-      >
-        {visibleSections.length > 0 ? (
-          <DeckSidebarSections
-            sections={visibleSections}
-            sectionIds={visibleSectionIds}
-            dragEnabled={dragEnabled}
-            selectedCardId={selectedCardId}
-            activeSidePreview={activeSidePreview}
-            activePreviewCardId={activePreviewCardId}
-            collapsedSections={collapsedSections}
-            sensors={sensors}
-            onSectionDragEnd={onSectionDragEnd}
-            onCardDragEnd={onCardDragEnd}
-            onSelectCard={selectCard}
-            onSectionContextMenu={openSectionContextMenu}
-            onCardContextMenu={openCardContextMenu}
-            onToggleCollapsed={toggleSectionCollapsed}
-          />
-        ) : (
-          <p
-            data-testid="deck-sidebar-no-results"
-            className="px-2 py-3 text-xs text-muted-foreground"
-          >
-            No matching cards.
-          </p>
-        )}
-      </div>
-
-      <div className="border-t border-border flex-shrink-0">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-11 w-full justify-center rounded-none border-x-0 border-b-0"
-          data-testid="deck-sidebar-add-section"
-          onClick={() => void createSectionWithCard()}
-        >
-          <Plus className="h-4 w-4" /> Section
-        </Button>
-      </div>
-
-      <DeckSidebarContextMenu
-        contextMenu={contextMenu}
-        sections={data.sections}
-        onNewCardInSection={handleNewCardInSection}
-        onMoveCardToSection={handleMoveCardToSection}
-        onDeleteCard={handleDeleteCard}
-        onRenameSection={handleRenameSection}
-        onDeleteSection={handleDeleteSection}
-      />
-    </aside>
+    <DeckEditorSidebarLayout
+      searchValue={searchValue}
+      setSearchValue={setSearchValue}
+      visibleSections={visibleSections}
+      visibleSectionIds={visibleSectionIds}
+      dragEnabled={dragEnabled}
+      selectedCardId={selectedCardId}
+      activeSidePreview={activeSidePreview}
+      activePreviewCardId={activePreviewCardId}
+      collapsedSections={collapsedSections}
+      sensors={sensors}
+      onSectionDragEnd={onSectionDragEnd}
+      onCardDragEnd={onCardDragEnd}
+      onSelectCard={selectCard}
+      onSectionContextMenu={openSectionContextMenu}
+      onCardContextMenu={openCardContextMenu}
+      onToggleCollapsed={toggleSectionCollapsed}
+      onCreateSection={createSectionWithCard}
+      contextMenu={contextMenu}
+      sections={data.sections}
+      onNewCardInSection={handleNewCardInSection}
+      onMoveCardToSection={handleMoveCardToSection}
+      onDeleteCard={handleDeleteCard}
+      onRenameSection={handleRenameSection}
+      onDeleteSection={handleDeleteSection}
+    />
   );
 }
