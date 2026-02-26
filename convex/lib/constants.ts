@@ -256,8 +256,6 @@ export const viewerAccessReasonValidator = v.union(
 
 export const deniedViewerDeckValidator = v.object({
   _id: v.id("decks"),
-  title: v.string(),
-  description: v.string(),
   visibility: deckVisibilityValidator,
 });
 

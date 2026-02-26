@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { MAX_CARDS_PER_DECK } from "../shared/contracts/deckConstants";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { cardDocValidator, editorCardPayloadValidator } from "./lib/constants";
@@ -16,6 +17,14 @@ export const create = mutation({
     const section = await ctx.db.get(args.sectionId);
     if (!section || section.deckId !== args.deckId) {
       throw new Error("Section not found");
+    }
+
+    const cardCount = await ctx.db
+      .query("cards")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", args.deckId))
+      .take(MAX_CARDS_PER_DECK);
+    if (cardCount.length >= MAX_CARDS_PER_DECK) {
+      throw new Error(`Deck cannot have more than ${MAX_CARDS_PER_DECK} cards`);
     }
 
     const last = await ctx.db

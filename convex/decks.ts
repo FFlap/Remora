@@ -325,8 +325,6 @@ export const getForViewer = query({
         access: deniedAccess,
         deck: {
           _id: deck._id,
-          title: deck.title,
-          description: deck.description,
           visibility: deck.visibility,
         },
       };

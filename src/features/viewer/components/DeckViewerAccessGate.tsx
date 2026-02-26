@@ -34,12 +34,12 @@ export function DeckViewerAccessGate({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" /> {data.deck.title}
+            <Lock className="h-5 w-5" /> This deck is private
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {data.deck.description || "This deck has restricted access."}
+            This deck has restricted access.
           </p>
 
           {data.access === "private" && (

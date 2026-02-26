@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { MAX_SECTION_TITLE_LENGTH } from "../shared/contracts/deckConstants";
+import { MAX_SECTIONS_PER_DECK, MAX_SECTION_TITLE_LENGTH } from "../shared/contracts/deckConstants";
 import { internal } from "./_generated/api";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
@@ -35,6 +35,14 @@ export const create = mutation({
   returns: v.id("sections"),
   handler: async (ctx, args) => {
     await assertCanEditDeck(ctx, args.deckId);
+
+    const sectionCount = await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", args.deckId))
+      .take(MAX_SECTIONS_PER_DECK);
+    if (sectionCount.length >= MAX_SECTIONS_PER_DECK) {
+      throw new Error(`Deck cannot have more than ${MAX_SECTIONS_PER_DECK} sections`);
+    }
 
     const last = await ctx.db
       .query("sections")

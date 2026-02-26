@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { MAX_WHITELIST_EMAILS } from "../shared/contracts/deckConstants";
 import { parseAccessRequestMessage } from "../shared/contracts/deckValidation";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, getDeckOrThrow } from "./lib/access";
@@ -137,13 +138,17 @@ export const resolveRequest = mutation({
     if (args.decision === "approved") {
       const normalizedRequesterEmail = normalizeEmail(request.requesterEmail);
       if (normalizedRequesterEmail) {
-        const whitelistEmails = Array.from(
-          new Set([...deck.whitelistEmails, normalizedRequesterEmail]),
-        );
-        await ctx.db.patch(deck._id, {
-          whitelistEmails: whitelistEmails.filter(Boolean),
-          updatedAt: now,
-        });
+        const alreadyWhitelisted = deck.whitelistEmails.includes(normalizedRequesterEmail);
+        if (!alreadyWhitelisted && deck.whitelistEmails.length >= MAX_WHITELIST_EMAILS) {
+          throw new Error(`Whitelist cannot exceed ${MAX_WHITELIST_EMAILS} entries`);
+        }
+        if (!alreadyWhitelisted) {
+          const whitelistEmails = [...deck.whitelistEmails, normalizedRequesterEmail].filter(Boolean);
+          await ctx.db.patch(deck._id, {
+            whitelistEmails,
+            updatedAt: now,
+          });
+        }
       }
     }
     return null;

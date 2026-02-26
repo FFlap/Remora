@@ -1,8 +1,10 @@
 import { v } from "convex/values";
+import { MAX_SIDES_PER_CARD } from "../shared/contracts/deckConstants";
 import { mutation, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { cardSideDocValidator, editModeValidator, sideModelValidator } from "./lib/constants";
 import { createDefaultSideModel } from "./lib/sideModel";
+import { assertSafeSideModel } from "./lib/validation";
 
 const MAX_SIDE_MODEL_SIZE_BYTES = 512_000; // 500 KB
 
@@ -43,6 +45,8 @@ export const saveSide = mutation({
     if (JSON.stringify(args.sideModel).length > MAX_SIDE_MODEL_SIZE_BYTES) {
       throw new Error("Side content is too large");
     }
+
+    assertSafeSideModel(args.sideModel);
 
     let existing = null;
     if (args.sideId) {
@@ -100,6 +104,10 @@ export const addSide = mutation({
       .query("cardSides")
       .withIndex("by_card_index", (q) => q.eq("cardId", args.cardId))
       .collect();
+
+    if (sides.length >= MAX_SIDES_PER_CARD) {
+      throw new Error(`Card cannot have more than ${MAX_SIDES_PER_CARD} sides`);
+    }
 
     const insertAfter = args.afterIndex ?? (sides.length > 0 ? sides[sides.length - 1].index : -1);
     const targetIndex = insertAfter + 1;
