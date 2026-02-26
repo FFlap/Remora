@@ -1,10 +1,18 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { mutation, type MutationCtx, query } from "./_generated/server";
 import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
 import { ensureCurrentUser, getCurrentUser } from "./lib/auth";
 import { assetDocValidator, assetWithResolvedUrlValidator } from "./lib/constants";
 
 const UPLOAD_SESSION_TTL_MS = 1000 * 60 * 30;
+const UPLOAD_SESSION_CONSUMED_RETENTION_MS = 1000 * 60 * 60 * 24;
+const UPLOAD_URL_RATE_WINDOW_MS = 1000 * 60 * 10;
+const MAX_UPLOAD_URLS_PER_WINDOW = 20;
+const MAX_ACTIVE_UPLOAD_SESSIONS_PER_USER = 8;
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ORPHAN_STORAGE_SWEEP_BATCH_SIZE = 25;
+const ORPHAN_STORAGE_MIN_AGE_MS = UPLOAD_SESSION_TTL_MS + 1000 * 60 * 10;
 
 function createUploadToken() {
   return crypto.randomUUID();
@@ -26,6 +34,15 @@ function resolveImageMime(
   return storageMime;
 }
 
+function assertValidImageSize(size: number) {
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new Error("Invalid image size");
+  }
+  if (size > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new Error("Image file is too large");
+  }
+}
+
 function assertValidImageDimensions(width: number | undefined, height: number | undefined) {
   if (width !== undefined && (!Number.isFinite(width) || width <= 0)) {
     throw new Error("Invalid image width");
@@ -33,6 +50,89 @@ function assertValidImageDimensions(width: number | undefined, height: number | 
 
   if (height !== undefined && (!Number.isFinite(height) || height <= 0)) {
     throw new Error("Invalid image height");
+  }
+}
+
+async function cleanupUploadSessionsForUser(
+  ctx: MutationCtx,
+  uploaderUserId: Id<"users">,
+  now: number,
+) {
+  const sessions = await ctx.db
+    .query("assetUploadSessions")
+    .withIndex("by_uploader", (q) => q.eq("uploaderUserId", uploaderUserId))
+    .collect();
+
+  let activeSessions = 0;
+  let issuedWithinWindow = 0;
+
+  for (const session of sessions) {
+    if (!session.consumedAt && session.expiresAt < now) {
+      await ctx.db.delete(session._id);
+      continue;
+    }
+
+    if (
+      session.consumedAt &&
+      now - session.consumedAt > UPLOAD_SESSION_CONSUMED_RETENTION_MS
+    ) {
+      await ctx.db.delete(session._id);
+      continue;
+    }
+
+    if (!session.consumedAt && session.expiresAt >= now) {
+      activeSessions += 1;
+    }
+
+    if (session.createdAt >= now - UPLOAD_URL_RATE_WINDOW_MS) {
+      issuedWithinWindow += 1;
+    }
+  }
+
+  return { activeSessions, issuedWithinWindow };
+}
+
+async function deleteStorageIfUnclaimed(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const existingAsset = await ctx.db
+    .query("assets")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .first();
+  if (existingAsset) {
+    return;
+  }
+
+  try {
+    await ctx.storage.delete(storageId);
+  } catch {
+    // Best-effort cleanup to avoid orphaned storage blobs.
+  }
+}
+
+async function sweepOrphanedStorage(ctx: MutationCtx, now: number) {
+  const cutoff = now - ORPHAN_STORAGE_MIN_AGE_MS;
+  const candidates = await ctx.db.system
+    .query("_storage")
+    .order("asc")
+    .take(ORPHAN_STORAGE_SWEEP_BATCH_SIZE);
+
+  for (const candidate of candidates) {
+    if (candidate._creationTime > cutoff) {
+      continue;
+    }
+
+    const claimedAsset = await ctx.db
+      .query("assets")
+      .withIndex("by_storage", (q) => q.eq("storageId", candidate._id))
+      .first();
+    if (claimedAsset) {
+      continue;
+    }
+
+    try {
+      await ctx.storage.delete(candidate._id);
+    } catch {
+      // Best-effort sweep. Keep mutation resilient when blob is already gone.
+    }
   }
 }
 
@@ -45,6 +145,21 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const user = await ensureCurrentUser(ctx);
     const now = Date.now();
+    const { activeSessions, issuedWithinWindow } = await cleanupUploadSessionsForUser(
+      ctx,
+      user._id,
+      now,
+    );
+    await sweepOrphanedStorage(ctx, now);
+
+    if (activeSessions >= MAX_ACTIVE_UPLOAD_SESSIONS_PER_USER) {
+      throw new Error("Too many active uploads. Please finish or wait for existing uploads to expire.");
+    }
+
+    if (issuedWithinWindow >= MAX_UPLOAD_URLS_PER_WINDOW) {
+      throw new Error("Upload rate limit exceeded. Please wait a few minutes.");
+    }
+
     const uploadUrl = await ctx.storage.generateUploadUrl();
     const uploadToken = createUploadToken();
 
@@ -103,47 +218,54 @@ export const saveUploadedImage = mutation({
     }
     if (uploadSession.expiresAt < now) {
       await ctx.db.delete(uploadSession._id);
+      await deleteStorageIfUnclaimed(ctx, args.storageId);
       throw new Error("Upload session expired");
-    }
-
-    assertValidImageDimensions(args.width, args.height);
-
-    if (args.deckId) {
-      await assertCanEditDeck(ctx, args.deckId);
-    }
-
-    const existingAsset = await ctx.db
-      .query("assets")
-      .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
-      .first();
-    if (existingAsset) {
-      throw new Error("Uploaded image already claimed");
     }
 
     await ctx.db.patch(uploadSession._id, {
       consumedAt: now,
     });
 
-    const url = await ctx.storage.getUrl(args.storageId);
+    try {
+      assertValidImageSize(storageMetadata.size);
+      assertValidImageDimensions(args.width, args.height);
 
-    const assetId = await ctx.db.insert("assets", {
-      ownerUserId: user._id,
-      deckId: args.deckId,
-      type: "image",
-      storageId: args.storageId,
-      url: url ?? undefined,
-      metadata: {
-        mime: storageMime,
-        width: args.width,
-        height: args.height,
-      },
-      createdAt: now,
-    });
+      if (args.deckId) {
+        await assertCanEditDeck(ctx, args.deckId);
+      }
 
-    return {
-      assetId,
-      url,
-    };
+      const existingAsset = await ctx.db
+        .query("assets")
+        .withIndex("by_storage", (q) => q.eq("storageId", args.storageId))
+        .first();
+      if (existingAsset) {
+        throw new Error("Uploaded image already claimed");
+      }
+
+      const url = await ctx.storage.getUrl(args.storageId);
+
+      const assetId = await ctx.db.insert("assets", {
+        ownerUserId: user._id,
+        deckId: args.deckId,
+        type: "image",
+        storageId: args.storageId,
+        url: url ?? undefined,
+        metadata: {
+          mime: storageMime,
+          width: args.width,
+          height: args.height,
+        },
+        createdAt: now,
+      });
+
+      return {
+        assetId,
+        url,
+      };
+    } catch (error) {
+      await deleteStorageIfUnclaimed(ctx, args.storageId);
+      throw error;
+    }
   },
 });
 
