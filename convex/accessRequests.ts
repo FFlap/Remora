@@ -138,12 +138,15 @@ export const resolveRequest = mutation({
     if (args.decision === "approved") {
       const normalizedRequesterEmail = normalizeEmail(request.requesterEmail);
       if (normalizedRequesterEmail) {
-        const alreadyWhitelisted = deck.whitelistEmails.includes(normalizedRequesterEmail);
-        if (!alreadyWhitelisted && deck.whitelistEmails.length >= MAX_WHITELIST_EMAILS) {
+        const normalizedWhitelist = Array.from(
+          new Set(deck.whitelistEmails.map(normalizeEmail).filter(Boolean)),
+        );
+        const alreadyWhitelisted = normalizedWhitelist.includes(normalizedRequesterEmail);
+        if (!alreadyWhitelisted && normalizedWhitelist.length >= MAX_WHITELIST_EMAILS) {
           throw new Error(`Whitelist cannot exceed ${MAX_WHITELIST_EMAILS} entries`);
         }
         if (!alreadyWhitelisted) {
-          const whitelistEmails = [...deck.whitelistEmails, normalizedRequesterEmail].filter(Boolean);
+          const whitelistEmails = [...normalizedWhitelist, normalizedRequesterEmail];
           await ctx.db.patch(deck._id, {
             whitelistEmails,
             updatedAt: now,
