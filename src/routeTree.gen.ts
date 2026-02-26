@@ -9,38 +9,147 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as DeckDeckIdIndexRouteImport } from './routes/deck/$deckId/index'
+import { Route as AppDecksIndexRouteImport } from './routes/app/decks/index'
+import { Route as AppDecksNewRouteImport } from './routes/app/decks/new'
+import { Route as DeckDeckIdCardCardIdRouteImport } from './routes/deck/$deckId/card/$cardId'
+import { Route as AppDecksDeckIdEditRouteImport } from './routes/app/decks/$deckId/edit'
+import { Route as AppDecksDeckIdEditCardCardIdRouteImport } from './routes/app/decks/$deckId/edit/card/$cardId'
 
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const DeckDeckIdIndexRoute = DeckDeckIdIndexRouteImport.update({
+  id: '/deck/$deckId/',
+  path: '/deck/$deckId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppDecksIndexRoute = AppDecksIndexRouteImport.update({
+  id: '/decks/',
+  path: '/decks/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppDecksNewRoute = AppDecksNewRouteImport.update({
+  id: '/decks/new',
+  path: '/decks/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const DeckDeckIdCardCardIdRoute = DeckDeckIdCardCardIdRouteImport.update({
+  id: '/deck/$deckId/card/$cardId',
+  path: '/deck/$deckId/card/$cardId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppDecksDeckIdEditRoute = AppDecksDeckIdEditRouteImport.update({
+  id: '/decks/$deckId/edit',
+  path: '/decks/$deckId/edit',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppDecksDeckIdEditCardCardIdRoute =
+  AppDecksDeckIdEditCardCardIdRouteImport.update({
+    id: '/card/$cardId',
+    path: '/card/$cardId',
+    getParentRoute: () => AppDecksDeckIdEditRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/decks/new': typeof AppDecksNewRoute
+  '/app/decks/': typeof AppDecksIndexRoute
+  '/deck/$deckId/': typeof DeckDeckIdIndexRoute
+  '/app/decks/$deckId/edit': typeof AppDecksDeckIdEditRouteWithChildren
+  '/deck/$deckId/card/$cardId': typeof DeckDeckIdCardCardIdRoute
+  '/app/decks/$deckId/edit/card/$cardId': typeof AppDecksDeckIdEditCardCardIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppIndexRoute
+  '/app/decks/new': typeof AppDecksNewRoute
+  '/app/decks': typeof AppDecksIndexRoute
+  '/deck/$deckId': typeof DeckDeckIdIndexRoute
+  '/app/decks/$deckId/edit': typeof AppDecksDeckIdEditRouteWithChildren
+  '/deck/$deckId/card/$cardId': typeof DeckDeckIdCardCardIdRoute
+  '/app/decks/$deckId/edit/card/$cardId': typeof AppDecksDeckIdEditCardCardIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/decks/new': typeof AppDecksNewRoute
+  '/app/decks/': typeof AppDecksIndexRoute
+  '/deck/$deckId/': typeof DeckDeckIdIndexRoute
+  '/app/decks/$deckId/edit': typeof AppDecksDeckIdEditRouteWithChildren
+  '/deck/$deckId/card/$cardId': typeof DeckDeckIdCardCardIdRoute
+  '/app/decks/$deckId/edit/card/$cardId': typeof AppDecksDeckIdEditCardCardIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/'
+    | '/app/decks/new'
+    | '/app/decks/'
+    | '/deck/$deckId/'
+    | '/app/decks/$deckId/edit'
+    | '/deck/$deckId/card/$cardId'
+    | '/app/decks/$deckId/edit/card/$cardId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app'
+    | '/app/decks/new'
+    | '/app/decks'
+    | '/deck/$deckId'
+    | '/app/decks/$deckId/edit'
+    | '/deck/$deckId/card/$cardId'
+    | '/app/decks/$deckId/edit/card/$cardId'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/'
+    | '/app/decks/new'
+    | '/app/decks/'
+    | '/deck/$deckId/'
+    | '/app/decks/$deckId/edit'
+    | '/deck/$deckId/card/$cardId'
+    | '/app/decks/$deckId/edit/card/$cardId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
+  DeckDeckIdIndexRoute: typeof DeckDeckIdIndexRoute
+  DeckDeckIdCardCardIdRoute: typeof DeckDeckIdCardCardIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +157,92 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/deck/$deckId/': {
+      id: '/deck/$deckId/'
+      path: '/deck/$deckId'
+      fullPath: '/deck/$deckId/'
+      preLoaderRoute: typeof DeckDeckIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/decks/': {
+      id: '/app/decks/'
+      path: '/decks'
+      fullPath: '/app/decks/'
+      preLoaderRoute: typeof AppDecksIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/decks/new': {
+      id: '/app/decks/new'
+      path: '/decks/new'
+      fullPath: '/app/decks/new'
+      preLoaderRoute: typeof AppDecksNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/deck/$deckId/card/$cardId': {
+      id: '/deck/$deckId/card/$cardId'
+      path: '/deck/$deckId/card/$cardId'
+      fullPath: '/deck/$deckId/card/$cardId'
+      preLoaderRoute: typeof DeckDeckIdCardCardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/decks/$deckId/edit': {
+      id: '/app/decks/$deckId/edit'
+      path: '/decks/$deckId/edit'
+      fullPath: '/app/decks/$deckId/edit'
+      preLoaderRoute: typeof AppDecksDeckIdEditRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/decks/$deckId/edit/card/$cardId': {
+      id: '/app/decks/$deckId/edit/card/$cardId'
+      path: '/card/$cardId'
+      fullPath: '/app/decks/$deckId/edit/card/$cardId'
+      preLoaderRoute: typeof AppDecksDeckIdEditCardCardIdRouteImport
+      parentRoute: typeof AppDecksDeckIdEditRoute
+    }
   }
 }
 
+interface AppDecksDeckIdEditRouteChildren {
+  AppDecksDeckIdEditCardCardIdRoute: typeof AppDecksDeckIdEditCardCardIdRoute
+}
+
+const AppDecksDeckIdEditRouteChildren: AppDecksDeckIdEditRouteChildren = {
+  AppDecksDeckIdEditCardCardIdRoute: AppDecksDeckIdEditCardCardIdRoute,
+}
+
+const AppDecksDeckIdEditRouteWithChildren =
+  AppDecksDeckIdEditRoute._addFileChildren(AppDecksDeckIdEditRouteChildren)
+
+interface AppRouteRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppDecksNewRoute: typeof AppDecksNewRoute
+  AppDecksIndexRoute: typeof AppDecksIndexRoute
+  AppDecksDeckIdEditRoute: typeof AppDecksDeckIdEditRouteWithChildren
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppDecksNewRoute: AppDecksNewRoute,
+  AppDecksIndexRoute: AppDecksIndexRoute,
+  AppDecksDeckIdEditRoute: AppDecksDeckIdEditRouteWithChildren,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
+  DeckDeckIdIndexRoute: DeckDeckIdIndexRoute,
+  DeckDeckIdCardCardIdRoute: DeckDeckIdCardCardIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

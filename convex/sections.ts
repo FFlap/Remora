@@ -1,0 +1,193 @@
+import { v } from "convex/values";
+import { MAX_SECTIONS_PER_DECK, MAX_SECTION_TITLE_LENGTH } from "../shared/contracts/deckConstants";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { assertCanEditDeck, assertCanReadDeck } from "./lib/access";
+import { sectionDocValidator } from "./lib/constants";
+
+const SECTION_SIDE_CLEANUP_BATCH_SIZE = 50;
+
+function parseSectionTitle(title: string): string {
+  const trimmed = title.trim();
+  if (trimmed.length > MAX_SECTION_TITLE_LENGTH) {
+    throw new Error(`Section title must be ${MAX_SECTION_TITLE_LENGTH} characters or fewer`);
+  }
+  return trimmed || "New section";
+}
+
+export const listByDeck = query({
+  args: { deckId: v.id("decks") },
+  returns: v.array(sectionDocValidator),
+  handler: async (ctx, args) => {
+    await assertCanReadDeck(ctx, args.deckId);
+    return await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", args.deckId))
+      .collect();
+  },
+});
+
+export const create = mutation({
+  args: {
+    deckId: v.id("decks"),
+    title: v.string(),
+  },
+  returns: v.id("sections"),
+  handler: async (ctx, args) => {
+    await assertCanEditDeck(ctx, args.deckId);
+
+    const sectionCount = await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", args.deckId))
+      .take(MAX_SECTIONS_PER_DECK);
+    if (sectionCount.length >= MAX_SECTIONS_PER_DECK) {
+      throw new Error(`Deck cannot have more than ${MAX_SECTIONS_PER_DECK} sections`);
+    }
+
+    const last = await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", args.deckId))
+      .order("desc")
+      .first();
+
+    const sectionId = await ctx.db.insert("sections", {
+      deckId: args.deckId,
+      title: parseSectionTitle(args.title),
+      order: last ? last.order + 1 : 0,
+    });
+
+    return sectionId;
+  },
+});
+
+export const rename = mutation({
+  args: {
+    sectionId: v.id("sections"),
+    title: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const section = await ctx.db.get(args.sectionId);
+    if (!section) {
+      throw new Error("Section not found");
+    }
+    await assertCanEditDeck(ctx, section.deckId);
+    await ctx.db.patch(args.sectionId, { title: parseSectionTitle(args.title) });
+    return null;
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    deckId: v.id("decks"),
+    orderedSectionIds: v.array(v.id("sections")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await assertCanEditDeck(ctx, args.deckId);
+
+    const sections = await ctx.db
+      .query("sections")
+      .withIndex("by_deck", (q) => q.eq("deckId", args.deckId))
+      .collect();
+
+    const sectionSet = new Set(sections.map((s) => s._id));
+    const orderedSet = new Set(args.orderedSectionIds);
+    if (orderedSet.size !== args.orderedSectionIds.length || orderedSet.size !== sectionSet.size) {
+      throw new Error("Invalid or incomplete section ordering");
+    }
+
+    for (const id of orderedSet) {
+      if (!sectionSet.has(id)) {
+        throw new Error("Invalid or incomplete section ordering");
+      }
+    }
+
+    await Promise.all(
+      args.orderedSectionIds.map((sectionId, index) =>
+        ctx.db.patch(sectionId, {
+          order: index,
+        }),
+      ),
+    );
+    return null;
+  },
+});
+
+export const remove = mutation({
+  args: { sectionId: v.id("sections") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const section = await ctx.db.get(args.sectionId);
+    if (!section) {
+      throw new Error("Section not found");
+    }
+    await assertCanEditDeck(ctx, section.deckId);
+
+    const sectionSample = await ctx.db
+      .query("sections")
+      .withIndex("by_deck_order", (q) => q.eq("deckId", section.deckId))
+      .take(2);
+    if (sectionSample.length <= 1) {
+      throw new Error("Deck must have at least one section");
+    }
+
+    await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+      sectionId: section._id,
+    });
+    await ctx.db.delete(section._id);
+    return null;
+  },
+});
+
+export const removeCardsCascadeStep = internalMutation({
+  args: {
+    sectionId: v.id("sections"),
+    cardId: v.optional(v.id("cards")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    let targetCardId = args.cardId;
+
+    if (targetCardId) {
+      const card = await ctx.db.get(targetCardId);
+      if (!card || card.sectionId !== args.sectionId) {
+        targetCardId = undefined;
+      }
+    }
+
+    if (!targetCardId) {
+      const [nextCard] = await ctx.db
+        .query("cards")
+        .withIndex("by_section", (q) => q.eq("sectionId", args.sectionId))
+        .take(1);
+
+      if (!nextCard) {
+        return null;
+      }
+      targetCardId = nextCard._id;
+    }
+
+    const sides = await ctx.db
+      .query("cardSides")
+      .withIndex("by_card", (q) => q.eq("cardId", targetCardId))
+      .take(SECTION_SIDE_CLEANUP_BATCH_SIZE);
+
+    if (sides.length > 0) {
+      for (const side of sides) {
+        await ctx.db.delete(side._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+        sectionId: args.sectionId,
+        cardId: targetCardId,
+      });
+      return null;
+    }
+
+    await ctx.db.delete(targetCardId);
+    await ctx.scheduler.runAfter(0, internal.sections.removeCardsCascadeStep, {
+      sectionId: args.sectionId,
+    });
+    return null;
+  },
+});

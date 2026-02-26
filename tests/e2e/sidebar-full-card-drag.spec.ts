@@ -1,0 +1,77 @@
+import { expect, test } from "@playwright/test";
+import { signInAsOwner } from "./utils/clerkAuth";
+
+async function createDeckAndOpenEditor(page: Parameters<typeof test>[0]["page"]) {
+  await signInAsOwner(page);
+  await page.goto("/app/decks/new");
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="newdeck-hydrated"]')?.textContent?.trim() === "yes",
+  );
+
+  await page.getByPlaceholder("Biology Midterm").fill(`Sidebar Drag Deck ${Date.now()}`);
+  await page.getByPlaceholder("Cells, mitosis, and genetics").fill("Sidebar full-card drag");
+  await page.getByRole("button", { name: "Create Deck" }).click();
+  await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
+}
+
+test.describe("Sidebar full-card drag", () => {
+  test("reorders cards by dragging the card preview itself (no drag handle) and keeps drag bounded to the card lane", async ({
+    page,
+  }) => {
+    await createDeckAndOpenEditor(page);
+
+    await page.getByText("Section 1").first().click({ button: "right" });
+    await page.getByRole("button", { name: "New card" }).click();
+    await expect(page).toHaveURL(/\/app\/decks\/[^/]+\/edit\/card\/[^/]+/);
+
+    const cardPreviews = page.locator('[data-testid^="card-sidebar-preview-"]');
+    await expect(cardPreviews).toHaveCount(2);
+    const beforeOrder = await cardPreviews.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("data-testid") ?? ""),
+    );
+    expect(beforeOrder[0]).toBeTruthy();
+    expect(beforeOrder[1]).toBeTruthy();
+    expect(beforeOrder[0]).not.toBe(beforeOrder[1]);
+
+    const firstBox = await cardPreviews.nth(0).boundingBox();
+    const secondBox = await cardPreviews.nth(1).boundingBox();
+    const sidebarScroll = await page.getByTestId("deck-sidebar-scroll").boundingBox();
+    const cardList = await page.getByTestId("deck-sidebar-card-list").first().boundingBox();
+    expect(firstBox).not.toBeNull();
+    expect(secondBox).not.toBeNull();
+    expect(sidebarScroll).not.toBeNull();
+    expect(cardList).not.toBeNull();
+    if (!firstBox || !secondBox || !sidebarScroll || !cardList) return;
+
+    await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y - 520, {
+      steps: 20,
+    });
+
+    const draggedBox = await cardPreviews.nth(0).boundingBox();
+    expect(draggedBox).not.toBeNull();
+    if (!draggedBox) return;
+    expect(draggedBox.y).toBeGreaterThanOrEqual(cardList.y - 1);
+    expect(draggedBox.x).toBeGreaterThanOrEqual(sidebarScroll.x - 1);
+    expect(draggedBox.x + draggedBox.width).toBeLessThanOrEqual(
+      sidebarScroll.x + sidebarScroll.width + 1,
+    );
+    await page.mouse.move(secondBox.x + secondBox.width / 2, secondBox.y + secondBox.height + 24, {
+      steps: 24,
+    });
+    await page.mouse.up();
+
+    await expect
+      .poll(
+        async () =>
+          JSON.stringify(
+            await cardPreviews.evaluateAll((nodes) =>
+              nodes.map((node) => node.getAttribute("data-testid") ?? ""),
+            ),
+          ),
+        { timeout: 10000 },
+      )
+      .not.toBe(JSON.stringify(beforeOrder));
+  });
+});

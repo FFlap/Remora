@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/client.tsx", "src/server.ts", "src/start.ts", "src/router.tsx"],
+  "ignore": ["convex/_generated/**", "src/routeTree.gen.ts"]
+}

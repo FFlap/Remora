@@ -1,0 +1,105 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "src/**",
+      "convex/**",
+      "!convex/_generated",
+      "!src/routeTree.gen.ts",
+      "shared/**",
+      "tests/**",
+      "playwright.config.ts",
+      "vite.config.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "jsxQuoteStyle": "double",
+      "trailingCommas": "all"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "a11y": "warn",
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": {
+            "maxAllowedComplexity": 18
+          }
+        },
+        "noExcessiveLinesPerFunction": {
+          "level": "warn",
+          "options": {
+            "maxLines": 90,
+            "skipBlankLines": true,
+            "skipIifes": true
+          }
+        },
+        "noImplicitCoercions": "error"
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": {
+          "level": "error",
+          "options": {
+            "ignoreRestSiblings": false
+          }
+        },
+        "useExhaustiveDependencies": {
+          "level": "error",
+          "options": {
+            "reportMissingDependenciesArray": true
+          }
+        },
+        "useHookAtTopLevel": "error"
+      },
+      "style": {
+        "noNestedTernary": "warn",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "requireAscii": true,
+            "strictCase": false
+          }
+        }
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noImplicitAnyLet": "error",
+        "useAwait": "warn"
+      },
+      "performance": {
+        "noAccumulatingSpread": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "noLeakedRender": "error",
+        "noExcessiveLinesPerFile": {
+          "level": "warn",
+          "options": {
+            "maxLines": 600,
+            "skipBlankLines": true
+          }
+        }
+      }
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    }
+  }
+}
