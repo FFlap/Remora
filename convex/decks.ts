@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { MAX_CARDS_PER_DECK, MAX_SIDES_PER_CARD } from "../shared/contracts/deckConstants";
 import { parseDeckMetaInput, parseDeckSharingInput } from "../shared/contracts/deckValidation";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -16,8 +17,6 @@ import { createDefaultSideModel } from "./lib/sideModel";
 const DECK_CLEANUP_BATCH_SIZE = 20;
 const ASSET_RETRY_BASE_DELAY_MS = 30_000;
 const ASSET_RETRY_MAX_ATTEMPTS = 8;
-const MAX_CARDS_PER_DECK = 500;
-const MAX_SIDES_PER_CARD = 50;
 
 async function loadSidesByCardId(
   ctx: QueryCtx,
